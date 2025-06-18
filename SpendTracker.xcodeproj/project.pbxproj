@@ -29,9 +29,22 @@
 		EBDA96502DFE36F30078CD8E /* SpendTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpendTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EBDBE4AF2E00F68600D6E5E1 /* Exceptions for "SpendTracker" folder in "SpendTracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = EBDA96382DFE36F10078CD8E /* SpendTracker */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EBDA963B2DFE36F10078CD8E /* SpendTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EBDBE4AF2E00F68600D6E5E1 /* Exceptions for "SpendTracker" folder in "SpendTracker" target */,
+			);
 			path = SpendTracker;
 			sourceTree = "<group>";
 		};
@@ -50,11 +63,6 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
-		EBDA966D2DFE37610078CD8E /* Utils */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Utils;
-			sourceTree = "<group>";
-		};
 		EBDA96712DFE377C0078CD8E /* ViewModels */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ViewModels;
@@ -63,6 +71,11 @@
 		EBDA96752DFE37980078CD8E /* Views */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Views;
+			sourceTree = "<group>";
+		};
+		EBE7B7C02E0216A000C31DDE /* Monetization */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Monetization;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -95,9 +108,9 @@
 		EBDA96302DFE36F10078CD8E = {
 			isa = PBXGroup;
 			children = (
+				EBE7B7C02E0216A000C31DDE /* Monetization */,
 				EBDA96752DFE37980078CD8E /* Views */,
 				EBDA96712DFE377C0078CD8E /* ViewModels */,
-				EBDA966D2DFE37610078CD8E /* Utils */,
 				EBDA96632DFE370D0078CD8E /* Models */,
 				EBDA963B2DFE36F10078CD8E /* SpendTracker */,
 				EBDA96492DFE36F30078CD8E /* SpendTrackerTests */,
@@ -134,9 +147,9 @@
 			fileSystemSynchronizedGroups = (
 				EBDA963B2DFE36F10078CD8E /* SpendTracker */,
 				EBDA96632DFE370D0078CD8E /* Models */,
-				EBDA966D2DFE37610078CD8E /* Utils */,
 				EBDA96712DFE377C0078CD8E /* ViewModels */,
 				EBDA96752DFE37980078CD8E /* Views */,
+				EBE7B7C02E0216A000C31DDE /* Monetization */,
 			);
 			name = SpendTracker;
 			packageProductDependencies = (
@@ -426,6 +439,9 @@
 				DEVELOPMENT_TEAM = BT5J7AXPYZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpendTracker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WhereIsMyMoney;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "WhereIsMyMoney uses Face ID to securely authenticate and protect your financial data.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -454,6 +470,9 @@
 				DEVELOPMENT_TEAM = BT5J7AXPYZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpendTracker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WhereIsMyMoney;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "WhereIsMyMoney uses Face ID to securely authenticate and protect your financial data.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

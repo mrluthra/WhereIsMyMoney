@@ -3,6 +3,7 @@ import SwiftUI
 struct AllTransactionsView: View {
     let account: Account
     @ObservedObject var accountStore: AccountStore
+    @StateObject private var receiptManager = ReceiptManager()
     @State private var searchText = ""
     @State private var selectedFilter = FilterOption.all
     
@@ -138,7 +139,8 @@ struct AllTransactionsView: View {
                         TransactionRowView(
                             transaction: transaction,
                             accountId: account.id,
-                            accountStore: accountStore
+                            accountStore: accountStore,
+                            receiptManager: receiptManager
                         )
                         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                         .listRowBackground(Color.clear)

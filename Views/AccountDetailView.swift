@@ -3,6 +3,7 @@ import SwiftUI
 struct AccountDetailView: View {
     let account: Account
     @ObservedObject var accountStore: AccountStore
+    @StateObject private var receiptManager = ReceiptManager()
     @State private var showingAddTransaction = false
     @State private var showingRecurringPayments = false
     @State private var showingAddTransfer = false
@@ -315,13 +316,14 @@ struct AccountDetailView: View {
                         .padding(.vertical, 40)
                     } else {
                         LazyVStack(spacing: 8) {
-                            ForEach(Array(sortedTransactions.prefix(10))) { transaction in
-                                TransactionRowView(
-                                    transaction: transaction,
-                                    accountId: account.id,
-                                    accountStore: accountStore
-                                )
-                            }
+                                ForEach(Array(sortedTransactions.prefix(10))) { transaction in
+                                    TransactionRowView(
+                                        transaction: transaction,
+                                        accountId: account.id,
+                                        accountStore: accountStore,
+                                        receiptManager: receiptManager  // Add this parameter
+                                    )
+                                }
                             
                             if sortedTransactions.count > 10 {
                                 NavigationLink(destination: AllTransactionsView(account: account, accountStore: accountStore)) {

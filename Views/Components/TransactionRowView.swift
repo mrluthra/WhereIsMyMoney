@@ -4,8 +4,37 @@ struct TransactionRowView: View {
     let transaction: Transaction
     let accountId: UUID
     @ObservedObject var accountStore: AccountStore
+    @ObservedObject var receiptManager: ReceiptManager
+    @StateObject private var categoryStore = CategoryStore()
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
+    @State private var showingReceiptDetail = false
+    
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var cardBackgroundColor: Color {
+        if colorScheme == .dark {
+            return Color(.systemGray6)
+        } else {
+            return Color(.systemBackground)
+        }
+    }
+    
+    private var borderColor: Color {
+        if colorScheme == .dark {
+            return Color(.systemGray4)
+        } else {
+            return Color.clear
+        }
+    }
+    
+    private var shadowColor: Color {
+        if colorScheme == .dark {
+            return Color.clear
+        } else {
+            return Color.black.opacity(0.05)
+        }
+    }
     
     private var formattedDate: String {
         let formatter = DateFormatter()
@@ -18,6 +47,18 @@ struct TransactionRowView: View {
         case .income: return .green
         case .expense: return .red
         case .transfer: return .blue
+        }
+    }
+    
+    private func colorForCategoryColor(_ colorName: String) -> Color {
+        switch colorName {
+        case "Blue": return .blue
+        case "Green": return .green
+        case "Purple": return .purple
+        case "Orange": return .orange
+        case "Red": return .red
+        case "Yellow": return .yellow
+        default: return .blue
         }
     }
     
@@ -39,8 +80,22 @@ struct TransactionRowView: View {
         return transaction.notes
     }
     
-    private var categoryIcon: String {
-        return transaction.category.systemImage
+    // Better category icon and color logic
+    private var categoryIconAndColor: (icon: String, color: Color) {
+        // First try to get icon and color from custom categories
+        if let notes = transaction.notes,
+           notes.hasPrefix("Category: ") {
+            let categoryName = String(notes.dropFirst("Category: ".count)).components(separatedBy: " | ").first ?? ""
+            
+            // Find matching custom category
+            let allCategories = categoryStore.categoriesForType(.expense) + categoryStore.categoriesForType(.income)
+            if let customCategory = allCategories.first(where: { $0.name == categoryName }) {
+                return (customCategory.icon, colorForCategoryColor(customCategory.color))
+            }
+        }
+        
+        // Fallback to default transaction category icon with proper color
+        return (transaction.category.systemImage, colorForTransactionType(transaction.type))
     }
     
     private var transferDisplayInfo: (payee: String, icon: String) {
@@ -53,27 +108,51 @@ struct TransactionRowView: View {
                 }
             }
         }
-        return (transaction.payee, categoryIcon)
+        return (transaction.payee, categoryIconAndColor.icon)
+    }
+    
+    // Check if transaction has associated receipt
+    private var associatedReceipt: Receipt? {
+        return receiptManager.receipts.first { $0.transactionId == transaction.id }
     }
     
     var body: some View {
         HStack(spacing: 12) {
-            // Category Icon
+            // Category Icon with proper color
             ZStack {
                 Circle()
-                    .fill(colorForTransactionType(transaction.type).opacity(0.2))
+                    .fill(categoryIconAndColor.color.opacity(0.2))
                     .frame(width: 40, height: 40)
                 
-                Image(systemName: transaction.type == .transfer ? transferDisplayInfo.icon : categoryIcon)
+                Image(systemName: transaction.type == .transfer ? transferDisplayInfo.icon : categoryIconAndColor.icon)
                     .font(.system(size: 16))
-                    .foregroundColor(colorForTransactionType(transaction.type))
+                    .foregroundColor(categoryIconAndColor.color)
             }
             
             // Transaction Details
             VStack(alignment: .leading, spacing: 2) {
-                Text(transferDisplayInfo.payee)
-                    .font(.headline)
-                    .lineLimit(1)
+                HStack {
+                    Text(transferDisplayInfo.payee)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    // Receipt icon if transaction has associated receipt
+                    if associatedReceipt != nil {
+                        Button(action: {
+                            showingReceiptDetail = true
+                        }) {
+                            Image(systemName: "doc.text.image.fill")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .padding(4)
+                                .background(Color.blue.opacity(0.1))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
                 
                 HStack(spacing: 4) {
                     Text(customCategoryName)
@@ -119,15 +198,28 @@ struct TransactionRowView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(cardBackgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 1)
+        .shadow(color: shadowColor, radius: 4, x: 0, y: 1)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(borderColor, lineWidth: colorScheme == .dark ? 1 : 0)
+        )
         .contextMenu {
+            // Receipt option if available
+            if associatedReceipt != nil {
+                Button(action: { showingReceiptDetail = true }) {
+                    Label("View Receipt", systemImage: "doc.text.image")
+                }
+                
+                Divider()
+            }
+            
             // Edit option
             Button(action: { showingEditSheet = true }) {
                 Label("Edit Transaction", systemImage: "pencil")
             }
-            .disabled(transaction.type == .transfer) // Disable edit for transfers
+            .disabled(transaction.type == .transfer)
             
             // Delete option
             Button(action: { showingDeleteAlert = true }) {
@@ -148,6 +240,15 @@ struct TransactionRowView: View {
                 accountStore: accountStore
             )
         }
+        .sheet(isPresented: $showingReceiptDetail) {
+            if let receipt = associatedReceipt {
+                ReceiptDetailView(
+                    receipt: receipt,
+                    receiptManager: receiptManager,
+                    accountStore: accountStore
+                )
+            }
+        }
         .alert("Delete Transaction", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -167,12 +268,20 @@ struct TransactionRowView: View {
     }
 }
 
-// Updated initializer for compatibility
+// Keep existing initializers for backward compatibility
 extension TransactionRowView {
     init(transaction: Transaction) {
         self.transaction = transaction
         self.accountId = transaction.accountId
-        self.accountStore = AccountStore() // This won't work properly - need to pass from parent
+        self.accountStore = AccountStore()
+        self.receiptManager = ReceiptManager()
+    }
+    
+    init(transaction: Transaction, accountId: UUID, accountStore: AccountStore) {
+        self.transaction = transaction
+        self.accountId = accountId
+        self.accountStore = accountStore
+        self.receiptManager = ReceiptManager()
     }
 }
 
@@ -189,21 +298,8 @@ extension TransactionRowView {
                 notes: "Category: Coffee & Drinks | Morning coffee"
             ),
             accountId: UUID(),
-            accountStore: AccountStore()
-        )
-        
-        TransactionRowView(
-            transaction: Transaction(
-                amount: 2500.00,
-                category: .salary,
-                accountId: UUID(),
-                date: Date(),
-                payee: "Company Inc",
-                type: .income,
-                notes: "Category: Monthly Salary"
-            ),
-            accountId: UUID(),
-            accountStore: AccountStore()
+            accountStore: AccountStore(),
+            receiptManager: ReceiptManager()
         )
     }
     .padding()

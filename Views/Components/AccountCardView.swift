@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AccountCardView: View {
     let account: Account
+    @Environment(\.colorScheme) private var colorScheme
     
     private func colorForAccount(_ colorName: String) -> Color {
         switch colorName {
@@ -12,6 +13,30 @@ struct AccountCardView: View {
         case "Red": return .red
         case "Yellow": return .yellow
         default: return .blue
+        }
+    }
+    
+    private var cardBackgroundColor: Color {
+        if colorScheme == .dark {
+            return Color(.systemGray6)
+        } else {
+            return Color(.systemBackground)
+        }
+    }
+    
+    private var borderColor: Color {
+        if colorScheme == .dark {
+            return Color(.systemGray4)
+        } else {
+            return Color.clear
+        }
+    }
+    
+    private var shadowColor: Color {
+        if colorScheme == .dark {
+            return Color.clear
+        } else {
+            return Color.black.opacity(0.05)
         }
     }
     
@@ -34,7 +59,7 @@ struct AccountCardView: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Text(account.accountType.rawValue)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -43,16 +68,16 @@ struct AccountCardView: View {
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(Capsule())
                     
-                    // Credit card specific indicator
+                    // Credit card debt indicator
                     if account.accountType == .credit && account.isInDebt {
                         Text("DEBT")
-                            .font(.caption)
-                            .fontWeight(.bold)
+                            .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 6)
+                            .padding(.horizontal, 4)
                             .padding(.vertical, 1)
                             .background(Color.red)
                             .clipShape(Capsule())
+                            .fixedSize()
                     }
                 }
             }
@@ -101,31 +126,12 @@ struct AccountCardView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(cardBackgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .shadow(color: shadowColor, radius: 8, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(borderColor, lineWidth: colorScheme == .dark ? 1 : 0)
+        )
     }
-}
-
-#Preview {
-    VStack(spacing: 12) {
-        // Debit account preview
-        AccountCardView(account: Account(
-            name: "Chase Checking",
-            startingBalance: 1500.00,
-            icon: "creditcard",
-            color: "Blue",
-            accountType: .debit
-        ))
-        
-        // Credit card with debt preview
-        AccountCardView(account: Account(
-            name: "Chase Credit Card",
-            startingBalance: 500.00, // This becomes -500 for credit cards
-            icon: "creditcard.fill",
-            color: "Red",
-            accountType: .credit
-        ))
-    }
-    .padding()
 }

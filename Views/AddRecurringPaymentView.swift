@@ -14,6 +14,7 @@ struct AddRecurringPaymentView: View {
     @State private var selectedType = Transaction.TransactionType.expense
     @State private var selectedCategory = "Bills & Utilities"
     @State private var selectedCategoryIcon = "doc.text.fill"
+    @State private var selectedCategoryColor = "Blue" // Add this for color tracking
     @State private var selectedFrequency = RecurringPayment.Frequency.monthly
     @State private var startDate = Date()
     
@@ -29,50 +30,56 @@ struct AddRecurringPaymentView: View {
         }
     }
     
+    private func colorForCategoryColor(_ colorName: String) -> Color {
+        switch colorName {
+        case "Blue": return .blue
+        case "Green": return .green
+        case "Purple": return .purple
+        case "Orange": return .orange
+        case "Red": return .red
+        case "Yellow": return .yellow
+        default: return .blue
+        }
+    }
+    
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Category & Schedule")) {
-                    // Category Selection
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Category")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                Section(header: Text("Payment Details")) {
+                    TextField("Payment Name", text: $paymentName)
+                        .textInputAutocapitalization(.words)
+                    
+                    TextField("Payee/Company", text: $payee)
+                        .textInputAutocapitalization(.words)
+                    
+                    HStack {
+                        Text(selectedType == .expense ? "-$" : "+$")
+                            .font(.headline)
+                            .foregroundColor(colorForTransactionType(selectedType))
                         
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
-                            ForEach(availableCategories, id: \.id) { category in
-                                Button(action: {
-                                    selectedCategory = category.name
-                                    selectedCategoryIcon = category.icon
-                                }) {
-                                    VStack(spacing: 8) {
-                                        Image(systemName: category.icon)
-                                            .font(.title3)
-                                            .foregroundColor(selectedCategory == category.name ? .white : colorForTransactionType(selectedType))
-                                        
-                                        Text(category.name)
-                                            .font(.caption)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(selectedCategory == category.name ? .white : .primary)
-                                            .multilineTextAlignment(.center)
-                                            .lineLimit(2)
-                                    }
-                                    .frame(height: 60)
-                                    .frame(maxWidth: .infinity)
-                                    .background(
-                                        selectedCategory == category.name
-                                        ? colorForTransactionType(selectedType)
-                                        : colorForTransactionType(selectedType).opacity(0.1)
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
+                        TextField("Amount", text: $amount)
+                            .keyboardType(.decimalPad)
+                            .font(.headline)
+                    }
+                    
+                    Picker("Type", selection: $selectedType) {
+                        ForEach([Transaction.TransactionType.income, Transaction.TransactionType.expense], id: \.self) { type in
+                            Label(type.rawValue, systemImage: type.systemImage)
+                                .tag(type)
                         }
                     }
-                    .padding(.vertical, 8)
-                    
-                    // Frequency Selection
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedType) { oldValue, newValue in
+                        // Reset category when type changes
+                        if let firstCategory = availableCategories.first {
+                            selectedCategory = firstCategory.name
+                            selectedCategoryIcon = firstCategory.icon
+                            selectedCategoryColor = firstCategory.color
+                        }
+                    }
+                }
+                
+                Section(header: Text("Schedule")) {
                     Picker("Frequency", selection: $selectedFrequency) {
                         ForEach(RecurringPayment.Frequency.allCases, id: \.self) { frequency in
                             Label(frequency.rawValue, systemImage: frequency.systemImage)
@@ -86,12 +93,82 @@ struct AddRecurringPaymentView: View {
                         .lineLimit(3)
                 }
                 
+                Section(header: Text("Category")) {
+                    if availableCategories.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "tag.slash")
+                                .font(.title)
+                                .foregroundColor(.secondary)
+                            
+                            Text("No Categories Available")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            
+                            Text("Add some categories first in Manage Categories")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                    } else {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
+                            ForEach(availableCategories, id: \.id) { category in
+                                Button(action: {
+                                    selectedCategory = category.name
+                                    selectedCategoryIcon = category.icon
+                                    selectedCategoryColor = category.color
+                                }) {
+                                    VStack(spacing: 8) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(selectedCategory == category.name ?
+                                                      colorForCategoryColor(category.color) :
+                                                      colorForCategoryColor(category.color).opacity(0.2))
+                                                .frame(width: 40, height: 40)
+                                            
+                                            Image(systemName: category.icon)
+                                                .font(.title3)
+                                                .foregroundColor(selectedCategory == category.name ?
+                                                               .white :
+                                                               colorForCategoryColor(category.color))
+                                        }
+                                        
+                                        Text(category.name)
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(selectedCategory == category.name ? .primary : .secondary)
+                                            .multilineTextAlignment(.center)
+                                            .lineLimit(2)
+                                    }
+                                    .frame(height: 80)
+                                    .frame(maxWidth: .infinity)
+                                    .background(
+                                        selectedCategory == category.name
+                                        ? colorForCategoryColor(category.color).opacity(0.1)
+                                        : Color.clear
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(selectedCategory == category.name ?
+                                                   colorForCategoryColor(category.color) :
+                                                   Color.clear, lineWidth: 2)
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+                
                 if isFormValid {
                     Section(header: Text("Preview")) {
                         VStack(spacing: 12) {
                             HStack(spacing: 12) {
                                 Image(systemName: selectedCategoryIcon)
-                                    .foregroundColor(colorForTransactionType(selectedType))
+                                    .foregroundColor(colorForCategoryColor(selectedCategoryColor))
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(paymentName)
@@ -142,10 +219,11 @@ struct AddRecurringPaymentView: View {
             }
         }
         .onAppear {
-            // Set initial category
+            // Set initial category when view appears
             if let firstCategory = availableCategories.first {
                 selectedCategory = firstCategory.name
                 selectedCategoryIcon = firstCategory.icon
+                selectedCategoryColor = firstCategory.color
             }
         }
     }
