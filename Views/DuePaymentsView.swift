@@ -4,6 +4,7 @@ struct DuePaymentsView: View {
     let duePayments: [RecurringPayment]
     @ObservedObject var recurringStore: RecurringPaymentStore
     @ObservedObject var accountStore: AccountStore
+    @EnvironmentObject var currencyManager: CurrencyManager
     @Environment(\.dismiss) private var dismiss
     
     private func colorForTransactionType(_ type: Transaction.TransactionType) -> Color {
@@ -59,7 +60,8 @@ struct DuePaymentsView: View {
                             DuePaymentRowView(
                                 payment: payment,
                                 colorForTransactionType: colorForTransactionType,
-                                onProcess: { processPayment(payment) }
+                                onProcess: { processPayment(payment) },
+                                currencyManager: currencyManager  // ← Added this parameter
                             )
                         }
                     }
@@ -82,6 +84,7 @@ struct DuePaymentRowView: View {
     let payment: RecurringPayment
     let colorForTransactionType: (Transaction.TransactionType) -> Color
     let onProcess: () -> Void
+    let currencyManager: CurrencyManager
     
     @State private var isProcessed = false
     
@@ -117,7 +120,7 @@ struct DuePaymentRowView: View {
             
             // Amount and Action
             VStack(alignment: .trailing, spacing: 8) {
-                Text("\(payment.type == .expense ? "-" : "+")$\(payment.amount, specifier: "%.2f")")
+                Text("\(payment.type == .expense ? "-" : "+")\(currencyManager.formatAmount(payment.amount))")
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundColor(colorForTransactionType(payment.type))
@@ -155,4 +158,5 @@ struct DuePaymentRowView: View {
         recurringStore: RecurringPaymentStore(),
         accountStore: AccountStore()
     )
+    .environmentObject(CurrencyManager())
 }

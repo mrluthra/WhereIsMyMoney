@@ -5,6 +5,8 @@ struct AddRecurringPaymentView: View {
     @ObservedObject var recurringStore: RecurringPaymentStore
     @ObservedObject var accountStore: AccountStore
     @StateObject private var categoryStore = CategoryStore()
+    @StateObject private var currencyManager = CurrencyManager()
+    
     @Environment(\.dismiss) private var dismiss
     
     @State private var paymentName = ""
@@ -53,7 +55,8 @@ struct AddRecurringPaymentView: View {
                         .textInputAutocapitalization(.words)
                     
                     HStack {
-                        Text(selectedType == .expense ? "-$" : "+$")
+                        //Text(selectedType == .expense ? "-$" : "+$")
+                        Text(selectedType == .expense ? "-\(currencyManager.currencySymbol)" : "+\(currencyManager.currencySymbol)")
                             .font(.headline)
                             .foregroundColor(colorForTransactionType(selectedType))
                         
@@ -180,7 +183,8 @@ struct AddRecurringPaymentView: View {
                                 
                                 Spacer()
                                 
-                                Text("\(selectedType == .expense ? "-" : "+")$\(Double(amount) ?? 0, specifier: "%.2f")")
+                               //Text("\(selectedType == .expense ? "-" : "+")$\(Double(amount) ?? 0, specifier: "%.2f")")
+                                Text("\(selectedType == .expense ? "-" : "+")\(currencyManager.formatAmount(Double(amount) ?? 0))")
                                     .font(.headline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(colorForTransactionType(selectedType))

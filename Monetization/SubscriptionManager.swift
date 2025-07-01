@@ -23,8 +23,8 @@ class SubscriptionManager: NSObject, ObservableObject {
     static let FREE_TRANSACTIONS_PER_ACCOUNT_PER_MONTH = 50
     
     // Product IDs
-    private let monthlyProductID = "com.whereismymoney.premium.monthly"
-    private let yearlyProductID = "com.whereismymoney.premium.yearly"
+    private let monthlyProductID = "com.CashPotato.premium.monthly"
+    private let yearlyProductID = "com.CashPotato.premium.yearly"
     
     enum SubscriptionStatus {
         case free

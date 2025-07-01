@@ -3,6 +3,7 @@ import SwiftUI
 struct EditAccountView: View {
     let account: Account
     @ObservedObject var accountStore: AccountStore
+    @EnvironmentObject var currencyManager: CurrencyManager
     @Environment(\.dismiss) private var dismiss
     
     @State private var accountName: String
@@ -92,14 +93,16 @@ struct EditAccountView: View {
                 HStack {
                     Text("Starting Debt")
                     Spacer()
-                    Text("$\(abs(account.startingBalance), specifier: "%.2f")")
+                    //Text("$\(abs(account.startingBalance), specifier: "%.2f")")
+                    Text(currencyManager.formatAmount(abs(account.startingBalance)))
                         .foregroundColor(.secondary)
                 }
             } else {
                 HStack {
                     Text("Starting Balance")
                     Spacer()
-                    Text("$\(account.startingBalance, specifier: "%.2f")")
+                    //Text("$\(account.startingBalance, specifier: "%.2f")")
+                    Text(currencyManager.formatAmount(account.startingBalance))
                         .foregroundColor(.secondary)
                 }
             }

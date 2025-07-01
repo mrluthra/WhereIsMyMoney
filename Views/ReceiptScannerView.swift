@@ -11,6 +11,8 @@ struct ReceiptScannerView: View {
     @StateObject private var payeeSuggestionEngine = PayeeSuggestionEngine()
     @Environment(\.dismiss) private var dismiss
     
+    @EnvironmentObject var currencyManager: CurrencyManager
+    
     @State private var showingImagePicker = false
     @State private var showingCamera = false
     @State private var showingPhotoPicker = false
@@ -290,7 +292,8 @@ struct ReceiptScannerView: View {
                                     Text("Total Amount:")
                                         .fontWeight(.medium)
                                     Spacer()
-                                    Text("$\(amount, specifier: "%.2f")")
+                                    //Text("$\(amount, specifier: "%.2f")")
+                                    Text(currencyManager.formatAmount(amount))
                                         .foregroundColor(.green)
                                         .fontWeight(.semibold)
                                 }

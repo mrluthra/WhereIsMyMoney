@@ -4,6 +4,8 @@ struct TransactionDetailView: View {
     let transaction: Transaction
     let accountId: UUID
     @ObservedObject var accountStore: AccountStore
+    @EnvironmentObject var currencyManager: CurrencyManager
+    
     @Environment(\.dismiss) private var dismiss
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
@@ -48,7 +50,7 @@ struct TransactionDetailView: View {
                     VStack(spacing: 16) {
                         // Amount
                         VStack(spacing: 8) {
-                            Text("\(transaction.type == .expense ? "-" : "+")$\(transaction.amount, specifier: "%.2f")")
+                            Text("\(transaction.type == .expense ? "-" : "+")\(currencyManager.formatAmount(transaction.amount))")
                                 .font(.system(size: 36, weight: .bold, design: .rounded))
                                 .foregroundColor(colorForTransactionType(transaction.type))
                             

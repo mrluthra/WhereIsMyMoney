@@ -79,3 +79,29 @@ class RecurringPaymentStore: ObservableObject {
         }
     }
 }
+
+extension RecurringPaymentStore {
+    
+    func addRecurringPaymentWithScheduling(_ payment: RecurringPayment) {
+        addRecurringPayment(payment)
+        // Schedule notifications for new payment
+        RecurringPaymentScheduler.shared.scheduleUpcomingPaymentNotifications()
+    }
+    
+    func updateRecurringPaymentWithScheduling(_ payment: RecurringPayment) {
+        updateRecurringPayment(payment)
+        // Reschedule notifications after update
+        RecurringPaymentScheduler.shared.scheduleUpcomingPaymentNotifications()
+    }
+    
+    func deleteRecurringPaymentWithScheduling(_ payment: RecurringPayment) {
+        deleteRecurringPayment(payment)
+        // Remove associated notifications
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [
+            "reminder-\(payment.id.uuidString)",
+            "payment-\(payment.id.uuidString)"
+        ])
+        // Reschedule remaining notifications
+        RecurringPaymentScheduler.shared.scheduleUpcomingPaymentNotifications()
+    }
+}

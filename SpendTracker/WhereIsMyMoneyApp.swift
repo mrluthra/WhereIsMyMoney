@@ -8,10 +8,14 @@
 import SwiftUI
 
 @main
-struct WhereIsMyMoneyApp: App {
+struct CashPotatoApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var currencyManager = CurrencyManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(currencyManager) // Inject as environment object
         }
     }
 }

@@ -5,12 +5,27 @@ struct TransactionRowView: View {
     let accountId: UUID
     @ObservedObject var accountStore: AccountStore
     @ObservedObject var receiptManager: ReceiptManager
+    
+    // Optional running total - if provided, it will be displayed
+    let runningTotal: Double?
+    
+    @EnvironmentObject var currencyManager: CurrencyManager
+    
     @StateObject private var categoryStore = CategoryStore()
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     @State private var showingReceiptDetail = false
     
     @Environment(\.colorScheme) private var colorScheme
+    
+    // Primary initializer with optional running total
+    init(transaction: Transaction, accountId: UUID, accountStore: AccountStore, receiptManager: ReceiptManager, runningTotal: Double? = nil) {
+        self.transaction = transaction
+        self.accountId = accountId
+        self.accountStore = accountStore
+        self.receiptManager = receiptManager
+        self.runningTotal = runningTotal
+    }
     
     private var cardBackgroundColor: Color {
         if colorScheme == .dark {
@@ -117,84 +132,109 @@ struct TransactionRowView: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Category Icon with proper color
-            ZStack {
-                Circle()
-                    .fill(categoryIconAndColor.color.opacity(0.2))
-                    .frame(width: 40, height: 40)
+        VStack(spacing: 8) {
+            // Main Transaction Row
+            HStack(spacing: 12) {
+                // Category Icon with proper color
+                ZStack {
+                    Circle()
+                        .fill(categoryIconAndColor.color.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: transaction.type == .transfer ? transferDisplayInfo.icon : categoryIconAndColor.icon)
+                        .font(.system(size: 16))
+                        .foregroundColor(categoryIconAndColor.color)
+                }
                 
-                Image(systemName: transaction.type == .transfer ? transferDisplayInfo.icon : categoryIconAndColor.icon)
-                    .font(.system(size: 16))
-                    .foregroundColor(categoryIconAndColor.color)
-            }
-            
-            // Transaction Details
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(transferDisplayInfo.payee)
-                        .font(.headline)
-                        .lineLimit(1)
-                    
-                    Spacer()
-                    
-                    // Receipt icon if transaction has associated receipt
-                    if associatedReceipt != nil {
-                        Button(action: {
-                            showingReceiptDetail = true
-                        }) {
-                            Image(systemName: "doc.text.image.fill")
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                                .padding(4)
-                                .background(Color.blue.opacity(0.1))
-                                .clipShape(Circle())
+                // Transaction Details
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text(transferDisplayInfo.payee)
+                            .font(.headline)
+                            .lineLimit(1)
+                        
+                        Spacer()
+                        
+                        // Receipt icon if transaction has associated receipt
+                        if associatedReceipt != nil {
+                            Button(action: {
+                                showingReceiptDetail = true
+                            }) {
+                                Image(systemName: "doc.text.image.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                    .padding(4)
+                                    .background(Color.blue.opacity(0.1))
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
+                    }
+                    
+                    HStack(spacing: 4) {
+                        Text(customCategoryName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text("•")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(formattedDate)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if let notes = actualNotes, !notes.isEmpty {
+                        Text(notes)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
                     }
                 }
                 
-                HStack(spacing: 4) {
-                    Text(customCategoryName)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("•")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text(formattedDate)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                Spacer()
                 
-                if let notes = actualNotes, !notes.isEmpty {
-                    Text(notes)
+                // Amount
+                VStack(alignment: .trailing, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text(transaction.type == .expense || (transaction.type == .transfer && transaction.isTransferSource == true) ? "-" : "+")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(colorForTransactionType(transaction.type))
+                        
+                        Text(currencyManager.formatAmount(transaction.amount))
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(colorForTransactionType(transaction.type))
+                    }
+                    
+                    Image(systemName: transaction.type.systemImage)
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                        .foregroundColor(colorForTransactionType(transaction.type))
                 }
             }
             
-            Spacer()
-            
-            // Amount
-            VStack(alignment: .trailing, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text(transaction.type == .expense ? "-" : "+")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(colorForTransactionType(transaction.type))
+            // Running Total Row (only displayed if runningTotal is provided)
+            if let runningTotal = runningTotal {
+                HStack {
+                    Spacer()
                     
-                    Text("$\(transaction.amount, specifier: "%.2f")")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(colorForTransactionType(transaction.type))
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Balance")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        Text(currencyManager.formatAmount(runningTotal))
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(runningTotal >= 0 ? .green : .red)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color(.systemGray6))
+                            .clipShape(Capsule())
+                    }
                 }
-                
-                Image(systemName: transaction.type.systemImage)
-                    .font(.caption)
-                    .foregroundColor(colorForTransactionType(transaction.type))
             }
         }
         .padding()
@@ -245,7 +285,8 @@ struct TransactionRowView: View {
                 ReceiptDetailView(
                     receipt: receipt,
                     receiptManager: receiptManager,
-                    accountStore: accountStore
+                    accountStore: accountStore,
+                    currencyManager: currencyManager
                 )
             }
         }
@@ -275,6 +316,7 @@ extension TransactionRowView {
         self.accountId = transaction.accountId
         self.accountStore = AccountStore()
         self.receiptManager = ReceiptManager()
+        self.runningTotal = nil
     }
     
     init(transaction: Transaction, accountId: UUID, accountStore: AccountStore) {
@@ -282,11 +324,13 @@ extension TransactionRowView {
         self.accountId = accountId
         self.accountStore = accountStore
         self.receiptManager = ReceiptManager()
+        self.runningTotal = nil
     }
 }
 
 #Preview {
     VStack(spacing: 8) {
+        // Preview without running total
         TransactionRowView(
             transaction: Transaction(
                 amount: 45.50,
@@ -301,6 +345,24 @@ extension TransactionRowView {
             accountStore: AccountStore(),
             receiptManager: ReceiptManager()
         )
+        
+        // Preview with running total
+        TransactionRowView(
+            transaction: Transaction(
+                amount: 150.00,
+                category: .salary,
+                accountId: UUID(),
+                date: Date().addingTimeInterval(-86400),
+                payee: "Employer Inc",
+                type: .income,
+                notes: "Category: Salary | Weekly paycheck"
+            ),
+            accountId: UUID(),
+            accountStore: AccountStore(),
+            receiptManager: ReceiptManager(),
+            runningTotal: 1654.50
+        )
     }
     .padding()
+    .environmentObject(CurrencyManager())
 }

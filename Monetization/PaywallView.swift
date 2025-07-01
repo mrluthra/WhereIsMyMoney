@@ -170,12 +170,12 @@ struct PaywallView: View {
                     selectedProduct = subscriptionManager.subscriptionProducts.first { $0.id.contains("monthly") }
                 }
                 
-                // FIXED: Annual Plan - $20/year (saves 17%)
+                // FIXED: Annual Plan - $19.99/year (saves 17%)
                 PricingCard(
                     title: "Annual",
                     price: "$1.67",
                     period: "month",
-                    billedAs: "Billed annually at $20",
+                    billedAs: "Billed annually at $19.99",
                     isSelected: selectedProduct?.id.contains("yearly") ?? false,
                     savings: "Save 17%",
                     hasFreeTrial: true

@@ -9,6 +9,7 @@ struct AddAccountView: View {
     @State private var selectedAccountType = Account.AccountType.debit
     @State private var selectedColor = "Blue"
     @State private var selectedIcon = "creditcard"
+    @EnvironmentObject var currencyManager: CurrencyManager
     
     private let availableColors = ["Blue", "Green", "Purple", "Orange", "Red", "Yellow"]
     private let availableIcons = ["creditcard", "banknote", "wallet.pass", "building.columns", "dollarsign.circle", "chart.line.uptrend.xyaxis"]
@@ -136,7 +137,8 @@ struct AddAccountView: View {
                                         .fontWeight(.semibold)
                                         .foregroundColor(.orange)
                                     
-                                    Text("$\(previewBalance, specifier: "%.2f") debt will show as what you owe")
+                                    //Text("$\(previewBalance, specifier: "%.2f") debt will show as what you owe")
+                                    Text("\(currencyManager.formatAmount(previewBalance)) debt will show as what you owe")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                         .multilineTextAlignment(.center)

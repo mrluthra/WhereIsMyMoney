@@ -18,7 +18,7 @@ struct PasscodeEntryView: View {
                         .font(.system(size: 60))
                         .foregroundColor(.white)
                     
-                    Text("WhereIsMyMoney")
+                    Text("CashPotato")
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(.white)

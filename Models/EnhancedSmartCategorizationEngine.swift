@@ -67,11 +67,12 @@ class EnhancedSmartCategorizationEngine: SmartCategorizationEngine {
         
         // Basic weekend vs weekday spending
         let weekendSpending = calculateWeekendSpending(transactions)
-        if weekendSpending.weekendAverage > weekendSpending.weekdayAverage * 1.2 {
+        if weekendSpending.weekendAverage > 0 && weekendSpending.weekdayAverage > 0 && weekendSpending.weekendAverage > weekendSpending.weekdayAverage * 1.2 {
+            let percentage = Int(((weekendSpending.weekendAverage / weekendSpending.weekdayAverage) - 1) * 100)
             insights.append(BasicSpendingInsight(
                 type: .pattern,
                 title: "Weekend Spending Alert",
-                message: "You spend \(Int((weekendSpending.weekendAverage / weekendSpending.weekdayAverage - 1) * 100))% more on weekends",
+                message: "You spend \(percentage)% more on weekends",
                 icon: "calendar.badge.exclamationmark"
             ))
         }
@@ -381,7 +382,7 @@ class EnhancedSmartCategorizationEngine: SmartCategorizationEngine {
                 type: .goalRecommendation,
                 title: "Emergency Fund Goal",
                 message: "Your emergency fund is $\(String(format: "%.0f", shortfall)) short of the recommended 6-month goal. Ideal emergency fund: $\(String(format: "%.0f", emergencyFundGoal)) (6 months expenses).",
-                icon: "shield.circle.fill",
+                icon: "lock.shield.fill",
                 priority: 83,
                 actionable: true,
                 recommendation: "Save $\(String(format: "%.0f", monthlyNeeded))/month to reach your emergency fund goal in 12 months.",

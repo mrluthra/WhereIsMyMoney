@@ -113,11 +113,12 @@ class SmartCategorizationEngine: ObservableObject {
         
         // 1. Weekend vs Weekday spending
         let weekendSpending = calculateWeekendSpending(transactions)
-        if weekendSpending.weekendAverage > weekendSpending.weekdayAverage * 1.2 {
+        if weekendSpending.weekendAverage > 0 && weekendSpending.weekdayAverage > 0 && weekendSpending.weekendAverage > weekendSpending.weekdayAverage * 1.2 {
+            let percentage = Int(((weekendSpending.weekendAverage / weekendSpending.weekdayAverage) - 1) * 100)
             insights.append(BasicSpendingInsight(
                 type: .pattern,
                 title: "Weekend Spending Alert",
-                message: "You spend \(Int((weekendSpending.weekendAverage / weekendSpending.weekdayAverage - 1) * 100))% more on weekends",
+                message: "You spend \(percentage)% more on weekends",
                 icon: "calendar.badge.exclamationmark"
             ))
         }

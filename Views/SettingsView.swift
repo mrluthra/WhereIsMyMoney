@@ -3,10 +3,14 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var authManager: AuthenticationManager
     @ObservedObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var currencyManager: CurrencyManager
     @Environment(\.dismiss) private var dismiss
     @State private var showingPasscodeSetup = false
     @State private var showingDisableAlert = false
     @State private var showingDeveloperSettings = false
+    @State private var showingPrivacyPolicy = false
+    @State private var showingTermsOfService = false
+    @State private var showingCurrencySelection = false
     
     init(authManager: AuthenticationManager, subscriptionManager: SubscriptionManager) {
         self.authManager = authManager
@@ -25,6 +29,9 @@ struct SettingsView: View {
                 // Subscription Section
                 subscriptionSection
                 
+                // App Preferences Section
+                appPreferencesSection
+                
                 // Developer Section (DEBUG only)
                 #if DEBUG
                 developerSection
@@ -35,6 +42,9 @@ struct SettingsView: View {
                 
                 // Data & Privacy Section
                 dataPrivacySection
+                
+                // Legal Section
+                legalSection
                 
                 // Support Section
                 supportSection
@@ -59,6 +69,15 @@ struct SettingsView: View {
         .sheet(isPresented: $subscriptionManager.showingPaywall) {
             PaywallView(subscriptionManager: subscriptionManager)
         }
+        .sheet(isPresented: $showingPrivacyPolicy) {
+            PrivacyPolicyView()
+        }
+        .sheet(isPresented: $showingTermsOfService) {
+            TermsOfServiceView()
+        }
+        .sheet(isPresented: $showingCurrencySelection) {
+            CurrencySelectionView(currencyManager: currencyManager)
+        }
         #if DEBUG
         .sheet(isPresented: $showingDeveloperSettings) {
             DeveloperSettingsView(subscriptionManager: subscriptionManager)
@@ -74,7 +93,52 @@ struct SettingsView: View {
         }
     }
     
-    // MARK: - Subscription Section
+    // MARK: - App Preferences Section
+    
+    private var appPreferencesSection: some View {
+        Section(header: Text("App Preferences")) {
+            // Currency Selection
+            Button(action: { showingCurrencySelection = true }) {
+                HStack {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.2))
+                            .frame(width: 32, height: 32)
+                        
+                        Text(currencyManager.selectedCurrency.flag)
+                            .font(.system(size: 16))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Currency")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        HStack {
+                            Text(currencyManager.selectedCurrency.name)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            Text("•")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Text(currencyManager.formatAmount(1234.56))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+    }
     
     private var subscriptionSection: some View {
         Section(header: Text("Subscription")) {
@@ -422,13 +486,35 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
             
-            Button(action: {
-                if let url = URL(string: "https://example.com/privacy") {
-                    UIApplication.shared.open(url)
+            HStack {
+                Image(systemName: "lock.shield.fill")
+                    .foregroundColor(.blue)
+                    .frame(width: 24)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Privacy First")
+                        .font(.headline)
+                    Text("No data collection, tracking, or sharing")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-            }) {
+                
+                Spacer()
+                
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+    
+    // MARK: - Legal Section
+    
+    private var legalSection: some View {
+        Section(header: Text("Legal")) {
+            Button(action: { showingPrivacyPolicy = true }) {
                 HStack {
-                    Image(systemName: "doc.text")
+                    Image(systemName: "hand.raised.fill")
                         .foregroundColor(.blue)
                         .frame(width: 24)
                     
@@ -438,7 +524,26 @@ struct SettingsView: View {
                     
                     Spacer()
                     
-                    Image(systemName: "arrow.up.right")
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            Button(action: { showingTermsOfService = true }) {
+                HStack {
+                    Image(systemName: "doc.text.fill")
+                        .foregroundColor(.blue)
+                        .frame(width: 24)
+                    
+                    Text("Terms of Service")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -452,7 +557,7 @@ struct SettingsView: View {
     private var supportSection: some View {
         Section(header: Text("Support")) {
             Button(action: {
-                if let url = URL(string: "mailto:support@whereismymoney.app") {
+                if let url = URL(string: "mailto:cashpotato@protonmail.com") {
                     UIApplication.shared.open(url)
                 }
             }) {
@@ -475,7 +580,7 @@ struct SettingsView: View {
             .buttonStyle(PlainButtonStyle())
             
             Button(action: {
-                if let url = URL(string: "https://apps.apple.com/app/whereismymoney/id123456789?action=write-review") {
+                if let url = URL(string: "https://apps.apple.com/app/cashpotato/id123456789?action=write-review") {
                     UIApplication.shared.open(url)
                 }
             }) {
@@ -509,7 +614,7 @@ struct SettingsView: View {
                     .frame(width: 24)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("WhereIsMyMoney")
+                    Text("CashPotato")
                         .font(.headline)
                     Text("Personal Finance Tracker")
                         .font(.caption)
@@ -536,29 +641,6 @@ struct SettingsView: View {
                 }
             }
             .padding(.vertical, 4)
-            
-            Button(action: {
-                if let url = URL(string: "https://example.com/terms") {
-                    UIApplication.shared.open(url)
-                }
-            }) {
-                HStack {
-                    Image(systemName: "doc.text")
-                        .foregroundColor(.blue)
-                        .frame(width: 24)
-                    
-                    Text("Terms of Service")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
         }
     }
 }

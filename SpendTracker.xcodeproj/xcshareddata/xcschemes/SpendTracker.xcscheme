@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "EBDA96382DFE36F10078CD8E"
-               BuildableName = "SpendTracker.app"
-               BlueprintName = "SpendTracker"
+               BuildableName = "CashPotato.app"
+               BlueprintName = "CashPotato"
                ReferencedContainer = "container:SpendTracker.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -36,8 +36,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "EBDA96452DFE36F30078CD8E"
-               BuildableName = "SpendTrackerTests.xctest"
-               BlueprintName = "SpendTrackerTests"
+               BuildableName = "CashPotatoTests.xctest"
+               BlueprintName = "CashPotatoTests"
                ReferencedContainer = "container:SpendTracker.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -47,8 +47,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "EBDA964F2DFE36F30078CD8E"
-               BuildableName = "SpendTrackerUITests.xctest"
-               BlueprintName = "SpendTrackerUITests"
+               BuildableName = "CashPotatoUITests.xctest"
+               BlueprintName = "CashPotatoUITests"
                ReferencedContainer = "container:SpendTracker.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -69,8 +69,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EBDA96382DFE36F10078CD8E"
-            BuildableName = "SpendTracker.app"
-            BlueprintName = "SpendTracker"
+            BuildableName = "CashPotato.app"
+            BlueprintName = "CashPotato"
             ReferencedContainer = "container:SpendTracker.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -86,8 +86,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EBDA96382DFE36F10078CD8E"
-            BuildableName = "SpendTracker.app"
-            BlueprintName = "SpendTracker"
+            BuildableName = "CashPotato.app"
+            BlueprintName = "CashPotato"
             ReferencedContainer = "container:SpendTracker.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -97,7 +97,7 @@
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
-      customArchiveName = "WhereIsMyMoney"
+      customArchiveName = "CashPotato"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>

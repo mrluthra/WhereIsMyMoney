@@ -4,12 +4,14 @@ struct ReportsView: View {
     @ObservedObject var accountStore: AccountStore
     @StateObject private var categoryStore = CategoryStore()
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var currencyManager: CurrencyManager
     
     @State private var selectedStartDate = Calendar.current.startOfMonth(for: Date()) ?? Date()
     @State private var selectedEndDate = Date()
     @State private var selectedReportType = ReportType.category
     @State private var showingTransactionDetail = false
     @State private var selectedReportItem: ReportItemData?
+    @State private var showingExportSheet = false
     
     enum ReportType: String, CaseIterable {
         case category = "By Category"
@@ -105,24 +107,24 @@ struct ReportsView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Reports")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
-                        dismiss()
-                    }
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Close") {
+                    dismiss()
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button(action: { /* Export functionality */ }) {
-                            Label("Export as CSV", systemImage: "doc.text")
-                        }
-                        Button(action: { /* Share functionality */ }) {
-                            Label("Share Report", systemImage: "square.and.arrow.up")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button(action: { showingExportSheet = true }) {
+                        Label("Export as CSV", systemImage: "doc.text")
                     }
+                    Button(action: { /* Share functionality */ }) {
+                        Label("Share Report", systemImage: "square.and.arrow.up")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -131,12 +133,16 @@ struct ReportsView: View {
                 TransactionDetailModalView(
                     reportItem: item,
                     dateRange: dateRangeText,
+                    currencyManager: currencyManager,
                     onDismiss: {
                         showingTransactionDetail = false
                         selectedReportItem = nil
                     }
                 )
             }
+        }
+        .sheet(isPresented: $showingExportSheet) {
+            ExportTransactionsView(accountStore: accountStore, preselectedAccount: nil)
         }
         .onAppear {
             setupInitialDates()
@@ -318,7 +324,7 @@ struct ReportsView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("$\(totalAmount, specifier: "%.2f")")
+                Text(currencyManager.formatAmount(totalAmount))
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.blue)
@@ -336,7 +342,8 @@ struct ReportsView: View {
                 ReportRowButton(
                     item: item,
                     rank: index + 1,
-                    totalAmount: totalAmount
+                    totalAmount: totalAmount,
+                    currencyManager: currencyManager
                 ) {
                     selectedReportItem = item
                     showingTransactionDetail = true
@@ -511,6 +518,7 @@ struct ReportRowButton: View {
     let item: ReportsView.ReportItemData
     let rank: Int
     let totalAmount: Double
+    let currencyManager: CurrencyManager
     let action: () -> Void
     
     private func colorForAmount(_ amount: Double) -> Color {
@@ -582,7 +590,7 @@ struct ReportRowButton: View {
                 
                 // Amount and Arrow
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("$\(abs(item.amount), specifier: "%.2f")")
+                    Text(currencyManager.formatAmount(abs(item.amount)))
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(colorForAmount(item.amount))
@@ -604,6 +612,7 @@ struct ReportRowButton: View {
 struct TransactionDetailModalView: View {
     let reportItem: ReportsView.ReportItemData
     let dateRange: String
+    let currencyManager: CurrencyManager
     let onDismiss: () -> Void
     
     private var sortedTransactions: [ReportsView.TransactionData] {
@@ -654,7 +663,7 @@ struct TransactionDetailModalView: View {
                         }
                         
                         VStack(spacing: 4) {
-                            Text("$\(abs(reportItem.amount), specifier: "%.2f")")
+                            Text(currencyManager.formatAmount(abs(reportItem.amount)))
                                 .font(.title)
                                 .fontWeight(.bold)
                                 .foregroundColor(reportItem.amount >= 0 ? .green : .red)
@@ -664,7 +673,7 @@ struct TransactionDetailModalView: View {
                         }
                         
                         VStack(spacing: 4) {
-                            Text("$\(abs(reportItem.amount) / Double(reportItem.transactionCount), specifier: "%.2f")")
+                            Text(currencyManager.formatAmount(abs(reportItem.amount) / Double(reportItem.transactionCount)))
                                 .font(.title)
                                 .fontWeight(.bold)
                                 .foregroundColor(.orange)
@@ -696,7 +705,7 @@ struct TransactionDetailModalView: View {
                                 Spacer()
                                 
                                 VStack(alignment: .trailing, spacing: 2) {
-                                    Text("\(transaction.type == .expense ? "-" : "+")$\(transaction.amount, specifier: "%.2f")")
+                                    Text("\(transaction.type == .expense ? "-" : "+")\(currencyManager.formatAmount(transaction.amount))")
                                         .font(.headline)
                                         .fontWeight(.semibold)
                                         .foregroundColor(colorForTransactionType(transaction.type))
@@ -771,4 +780,5 @@ extension Calendar {
 
 #Preview {
     ReportsView(accountStore: AccountStore())
+        .environmentObject(CurrencyManager())
 }

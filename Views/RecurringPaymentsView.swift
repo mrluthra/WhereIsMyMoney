@@ -4,7 +4,10 @@ struct RecurringPaymentsView: View {
     let account: Account
     @ObservedObject var accountStore: AccountStore
     @StateObject private var recurringStore = RecurringPaymentStore()
+    @EnvironmentObject var currencyManager: CurrencyManager
     @State private var showingAddPayment = false
+    @State private var selectedPayment: RecurringPayment?
+    @State private var showingEditPayment = false
     
     private var accountPayments: [RecurringPayment] {
         recurringStore.getPaymentsForAccount(account.id)
@@ -54,7 +57,12 @@ struct RecurringPaymentsView: View {
                             RecurringPaymentRowView(
                                 payment: payment,
                                 recurringStore: recurringStore,
-                                colorForTransactionType: colorForTransactionType
+                                colorForTransactionType: colorForTransactionType,
+                                currencyManager: currencyManager,
+                                onEdit: {
+                                    selectedPayment = payment
+                                    showingEditPayment = true
+                                }
                             )
                         }
                         .onDelete(perform: deletePayments)
@@ -78,6 +86,23 @@ struct RecurringPaymentsView: View {
                 accountStore: accountStore
             )
         }
+        .sheet(isPresented: $showingEditPayment) {
+            if let payment = selectedPayment {
+                EditRecurringPaymentView(
+                    payment: payment,
+                    account: account,
+                    recurringStore: recurringStore,
+                    accountStore: accountStore
+                )
+            }
+        }
+        .onAppear {
+            // Configure the scheduler when the view appears
+            RecurringPaymentScheduler.shared.configure(
+                recurringStore: recurringStore,
+                accountStore: accountStore
+            )
+        }
     }
     
     private func deletePayments(offsets: IndexSet) {
@@ -92,6 +117,8 @@ struct RecurringPaymentRowView: View {
     let payment: RecurringPayment
     @ObservedObject var recurringStore: RecurringPaymentStore
     let colorForTransactionType: (Transaction.TransactionType) -> Color
+    let currencyManager: CurrencyManager
+    let onEdit: () -> Void
     
     private var nextDueDateFormatted: String {
         let formatter = DateFormatter()
@@ -167,23 +194,55 @@ struct RecurringPaymentRowView: View {
             
             Spacer()
             
-            // Amount and Toggle
+            // Amount and Controls
             VStack(alignment: .trailing, spacing: 8) {
-                Text("\(payment.type == .expense ? "-" : "+")$\(payment.amount, specifier: "%.2f")")
+                Text("\(payment.type == .expense ? "-" : "+")\(currencyManager.formatAmount(payment.amount))")
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundColor(colorForTransactionType(payment.type))
                 
-                Toggle("", isOn: Binding(
-                    get: { payment.isActive },
-                    set: { _ in recurringStore.togglePaymentStatus(payment) }
-                ))
-                .labelsHidden()
-                .scaleEffect(0.8)
+                HStack(spacing: 8) {
+                    // Edit button
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .frame(width: 24, height: 24)
+                            .background(Color.blue.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // Active toggle
+                    Toggle("", isOn: Binding(
+                        get: { payment.isActive },
+                        set: { _ in recurringStore.togglePaymentStatus(payment) }
+                    ))
+                    .labelsHidden()
+                    .scaleEffect(0.8)
+                }
             }
         }
         .padding(.vertical, 4)
         .opacity(payment.isActive ? 1.0 : 0.6)
+        .contextMenu {
+            Button(action: onEdit) {
+                Label("Edit", systemImage: "pencil")
+            }
+            
+            Button(action: {
+                recurringStore.togglePaymentStatus(payment)
+            }) {
+                Label(payment.isActive ? "Deactivate" : "Activate",
+                      systemImage: payment.isActive ? "pause.circle" : "play.circle")
+            }
+            
+            Button(role: .destructive, action: {
+                recurringStore.deleteRecurringPayment(payment)
+            }) {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 }
 
@@ -198,4 +257,5 @@ struct RecurringPaymentRowView: View {
         ),
         accountStore: AccountStore()
     )
+    .environmentObject(CurrencyManager())
 }

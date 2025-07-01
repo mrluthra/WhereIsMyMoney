@@ -11,6 +11,8 @@ class AccountStore: ObservableObject {
         loadAccounts()
     }
     
+    // MARK: - Account Management
+    
     func addAccount(_ account: Account) {
         accounts.append(account)
         saveAccounts()
@@ -28,6 +30,16 @@ class AccountStore: ObservableObject {
         saveAccounts()
     }
     
+    func getAccount(_ accountId: UUID) -> Account? {
+        return accounts.first(where: { $0.id == accountId })
+    }
+    
+    func getAccountName(_ accountId: UUID) -> String {
+        return accounts.first(where: { $0.id == accountId })?.name ?? "Unknown Account"
+    }
+    
+    // MARK: - Transaction Management
+    
     func addTransaction(_ transaction: Transaction, to accountId: UUID) {
         if let index = accounts.firstIndex(where: { $0.id == accountId }) {
             accounts[index].addTransaction(transaction)
@@ -35,7 +47,6 @@ class AccountStore: ObservableObject {
         }
     }
     
-    // NEW: Update existing transaction
     func updateTransaction(_ updatedTransaction: Transaction, in accountId: UUID) {
         if let accountIndex = accounts.firstIndex(where: { $0.id == accountId }),
            let transactionIndex = accounts[accountIndex].transactions.firstIndex(where: { $0.id == updatedTransaction.id }) {
@@ -45,7 +56,6 @@ class AccountStore: ObservableObject {
         }
     }
     
-    // NEW: Delete transaction
     func deleteTransaction(_ transaction: Transaction, from accountId: UUID) {
         if let accountIndex = accounts.firstIndex(where: { $0.id == accountId }) {
             accounts[accountIndex].transactions.removeAll { $0.id == transaction.id }
@@ -60,20 +70,29 @@ class AccountStore: ObservableObject {
         }
     }
     
-    // NEW: Delete linked transfer transaction
-    private func deleteLinkedTransferTransaction(linkedId: UUID, excludingAccount: UUID) {
-        for accountIndex in accounts.indices {
-            if accounts[accountIndex].id != excludingAccount {
-                if let transactionIndex = accounts[accountIndex].transactions.firstIndex(where: { $0.id == linkedId }) {
-                    accounts[accountIndex].transactions.remove(at: transactionIndex)
-                    accounts[accountIndex].recalculateBalance()
-                    break
-                }
-            }
+    // NEW: Move transaction from one account to another
+    func moveTransaction(_ transaction: Transaction, from sourceAccountId: UUID, to targetAccountId: UUID) {
+        // Don't allow moving transfer transactions
+        guard transaction.type != .transfer else { return }
+        
+        // Remove transaction from source account
+        if let sourceAccountIndex = accounts.firstIndex(where: { $0.id == sourceAccountId }) {
+            accounts[sourceAccountIndex].transactions.removeAll { $0.id == transaction.id }
+            accounts[sourceAccountIndex].recalculateBalance()
         }
+        
+        // Update transaction's account ID and add to target account
+        var updatedTransaction = transaction
+        updatedTransaction.accountId = targetAccountId
+        
+        if let targetAccountIndex = accounts.firstIndex(where: { $0.id == targetAccountId }) {
+            accounts[targetAccountIndex].transactions.append(updatedTransaction)
+            accounts[targetAccountIndex].recalculateBalance()
+        }
+        
+        saveAccounts()
     }
     
-    // NEW: Get transaction by ID across all accounts
     func getTransaction(_ transactionId: UUID) -> (transaction: Transaction, accountId: UUID)? {
         for account in accounts {
             if let transaction = account.transactions.first(where: { $0.id == transactionId }) {
@@ -83,7 +102,8 @@ class AccountStore: ObservableObject {
         return nil
     }
     
-    // Transfer method for handling transfers
+    // MARK: - Transfer Management
+    
     func addTransfer(amount: Double, fromAccountId: UUID, toAccountId: UUID, date: Date, notes: String?) {
         let sourceTransaction = Transaction(
             amount: amount,
@@ -118,13 +138,19 @@ class AccountStore: ObservableObject {
         addTransaction(linkedTargetTransaction, to: toAccountId)
     }
     
-    func getAccountName(_ accountId: UUID) -> String {
-        return accounts.first(where: { $0.id == accountId })?.name ?? "Unknown Account"
+    private func deleteLinkedTransferTransaction(linkedId: UUID, excludingAccount: UUID) {
+        for accountIndex in accounts.indices {
+            if accounts[accountIndex].id != excludingAccount {
+                if let transactionIndex = accounts[accountIndex].transactions.firstIndex(where: { $0.id == linkedId }) {
+                    accounts[accountIndex].transactions.remove(at: transactionIndex)
+                    accounts[accountIndex].recalculateBalance()
+                    break
+                }
+            }
+        }
     }
     
-    func getAccount(_ accountId: UUID) -> Account? {
-        return accounts.first(where: { $0.id == accountId })
-    }
+    // MARK: - Financial Analytics
     
     func totalBalance() -> Double {
         return accounts.reduce(0) { total, account in
@@ -186,6 +212,103 @@ class AccountStore: ObservableObject {
         return ratio * 100
     }
     
+    // MARK: - Account Analysis
+    
+    func getAccountsByType(_ type: Account.AccountType) -> [Account] {
+        return accounts.filter { $0.accountType == type }
+    }
+    
+    func getAccountsWithTransactions() -> [Account] {
+        return accounts.filter { !$0.transactions.isEmpty }
+    }
+    
+    func getAccountsWithBalance(greaterThan amount: Double) -> [Account] {
+        return accounts.filter { $0.currentBalance > amount }
+    }
+    
+    func getAccountsWithBalance(lessThan amount: Double) -> [Account] {
+        return accounts.filter { $0.currentBalance < amount }
+    }
+    
+    // MARK: - Transaction Analysis
+    
+    func getAllTransactions() -> [Transaction] {
+        return accounts.flatMap { $0.transactions }
+    }
+    
+    func getTransactionsByType(_ type: Transaction.TransactionType) -> [Transaction] {
+        return getAllTransactions().filter { $0.type == type }
+    }
+    
+    func getTransactionsInDateRange(from startDate: Date, to endDate: Date) -> [Transaction] {
+        return getAllTransactions().filter { transaction in
+            transaction.date >= startDate && transaction.date <= endDate
+        }
+    }
+    
+    func getTotalIncomeForAccount(_ accountId: UUID, in dateRange: ClosedRange<Date>? = nil) -> Double {
+        guard let account = getAccount(accountId) else { return 0 }
+        
+        let transactions = dateRange == nil ? account.transactions :
+            account.transactions.filter { dateRange!.contains($0.date) }
+        
+        return transactions
+            .filter { $0.type == .income }
+            .reduce(0) { $0 + $1.amount }
+    }
+    
+    func getTotalExpensesForAccount(_ accountId: UUID, in dateRange: ClosedRange<Date>? = nil) -> Double {
+        guard let account = getAccount(accountId) else { return 0 }
+        
+        let transactions = dateRange == nil ? account.transactions :
+            account.transactions.filter { dateRange!.contains($0.date) }
+        
+        return transactions
+            .filter { $0.type == .expense }
+            .reduce(0) { $0 + $1.amount }
+    }
+    
+    func getNetChangeForAccount(_ accountId: UUID, in dateRange: ClosedRange<Date>? = nil) -> Double {
+        let income = getTotalIncomeForAccount(accountId, in: dateRange)
+        let expenses = getTotalExpensesForAccount(accountId, in: dateRange)
+        return income - expenses
+    }
+    
+    // MARK: - Account Validation
+    
+    func canDeleteAccount(_ account: Account) -> Bool {
+        // Don't allow deletion if account has transactions
+        return account.transactions.isEmpty
+    }
+    
+    func canMergeAccounts(_ sourceAccount: Account, with targetAccount: Account) -> Bool {
+        // Can only merge accounts of the same type
+        return sourceAccount.accountType == targetAccount.accountType
+    }
+    
+    func mergeAccounts(_ sourceAccount: Account, into targetAccount: Account) {
+        guard canMergeAccounts(sourceAccount, with: targetAccount),
+              let sourceIndex = accounts.firstIndex(where: { $0.id == sourceAccount.id }),
+              let targetIndex = accounts.firstIndex(where: { $0.id == targetAccount.id }) else {
+            return
+        }
+        
+        // Move all transactions from source to target
+        for transaction in sourceAccount.transactions {
+            moveTransaction(transaction, from: sourceAccount.id, to: targetAccount.id)
+        }
+        
+        // Update target account's starting balance
+        accounts[targetIndex].startingBalance += sourceAccount.startingBalance
+        accounts[targetIndex].recalculateBalance()
+        
+        // Remove source account
+        accounts.remove(at: sourceIndex)
+        saveAccounts()
+    }
+    
+    // MARK: - Data Persistence
+    
     private func saveAccounts() {
         if let encoded = try? JSONEncoder().encode(accounts) {
             userDefaults.set(encoded, forKey: accountsKey)
@@ -197,5 +320,106 @@ class AccountStore: ObservableObject {
            let decoded = try? JSONDecoder().decode([Account].self, from: data) {
             accounts = decoded
         }
+    }
+    
+    // MARK: - Data Export/Import
+    
+    func exportAccountsToJSON() -> Data? {
+        return try? JSONEncoder().encode(accounts)
+    }
+    
+    func importAccountsFromJSON(_ data: Data) throws {
+        let importedAccounts = try JSONDecoder().decode([Account].self, from: data)
+        accounts = importedAccounts
+        saveAccounts()
+    }
+    
+    // MARK: - Search and Filtering
+    
+    func searchTransactions(_ query: String) -> [Transaction] {
+        let lowercaseQuery = query.lowercased()
+        return getAllTransactions().filter { transaction in
+            transaction.payee.lowercased().contains(lowercaseQuery) ||
+            transaction.notes?.lowercased().contains(lowercaseQuery) == true ||
+            String(transaction.amount).contains(lowercaseQuery)
+        }
+    }
+    
+    func getRecentTransactions(limit: Int = 10) -> [Transaction] {
+        return getAllTransactions()
+            .sorted { $0.date > $1.date }
+            .prefix(limit)
+            .map { $0 }
+    }
+    
+    func getLargestTransactions(limit: Int = 10) -> [Transaction] {
+        return getAllTransactions()
+            .sorted { $0.amount > $1.amount }
+            .prefix(limit)
+            .map { $0 }
+    }
+    
+    // MARK: - Backup and Restore
+    
+    func createBackup() -> AccountBackup {
+        return AccountBackup(
+            accounts: accounts,
+            backupDate: Date(),
+            version: "1.0"
+        )
+    }
+    
+    func restoreFromBackup(_ backup: AccountBackup) {
+        accounts = backup.accounts
+        saveAccounts()
+    }
+}
+
+// MARK: - Supporting Types
+
+struct AccountBackup: Codable {
+    let accounts: [Account]
+    let backupDate: Date
+    let version: String
+}
+
+// MARK: - AccountStore Extensions for Convenience
+
+extension AccountStore {
+    
+    // Quick access to specific account types
+    var debitAccounts: [Account] {
+        return getAccountsByType(.debit)
+    }
+    
+    var creditAccounts: [Account] {
+        return getAccountsByType(.credit)
+    }
+    
+    // Quick financial summaries
+    var totalCash: Double {
+        return debitAccounts.reduce(0) { $0 + max($1.currentBalance, 0) }
+    }
+    
+    var totalCreditDebt: Double {
+        return creditAccounts.reduce(0) { $0 + abs(min($1.currentBalance, 0)) }
+    }
+    
+    var totalCreditAvailable: Double {
+        return creditAccounts.reduce(0) { $0 + max($1.currentBalance, 0) }
+    }
+    
+    // Account statistics
+    var accountCount: Int {
+        return accounts.count
+    }
+    
+    var transactionCount: Int {
+        return getAllTransactions().count
+    }
+    
+    var averageAccountBalance: Double {
+        guard !accounts.isEmpty else { return 0 }
+        return accounts.reduce(0) { $0 + $1.currentBalance } / Double(accounts.count)
     }
 }

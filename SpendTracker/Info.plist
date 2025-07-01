@@ -2,27 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Face ID and Touch ID permissions -->
-    <key>NSFaceIDUsageDescription</key>
-    <string>WhereIsMyMoney uses Face ID to securely authenticate and protect your financial data.</string>
-    
-    <key>NSBiometricUsageDescription</key>
-    <string>WhereIsMyMoney uses biometric authentication to securely protect your financial data.</string>
-    
-    <!-- Camera permissions for receipt scanning -->
-    <key>NSCameraUsageDescription</key>
-    <string>WhereIsMyMoney needs camera access to scan receipts and automatically extract transaction details.</string>
-    
-    <!-- Photo library permissions -->
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>WhereIsMyMoney needs photo library access to save scanned receipts and access existing receipt images.</string>
-    
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>WhereIsMyMoney saves scanned receipts to your photo library for easy access and backup.</string>
-    
-    <!-- Other existing keys remain the same -->
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>CashPotato</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -39,11 +22,12 @@
     <string>1</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
-    <key>UIApplicationSceneManifest</key>
-    <dict>
-        <key>UIApplicationSupportsMultipleScenes</key>
-        <true/>
-    </dict>
+    
+    <!-- SwiftUI App - No Scene Manifest needed for simple apps -->
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+    <key>UILaunchScreen</key>
+    <dict/>
     <key>UIRequiredDeviceCapabilities</key>
     <array>
         <string>armv7</string>
@@ -61,5 +45,36 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    
+    <!-- Background Task Permissions for Recurring Payments -->
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.yourapp.recurringpayments</string>
+    </array>
+    
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>background-processing</string>
+        <string>background-app-refresh</string>
+    </array>
+    
+    <!-- Notification Permissions -->
+    <key>NSUserNotificationUsageDescription</key>
+    <string>CashPotato sends notifications for due recurring payments and payment confirmations.</string>
+    
+    <!-- Biometric Authentication -->
+    <key>NSFaceIDUsageDescription</key>
+    <string>CashPotato uses Face ID to securely authenticate and protect your financial data.</string>
+    
+    <key>NSBiometricUsageDescription</key>
+    <string>CashPotato uses biometric authentication to securely protect your financial data.</string>
+    
+    <!-- Camera Permission for Receipt Scanning -->
+    <key>NSCameraUsageDescription</key>
+    <string>CashPotato uses the camera to scan receipts and extract transaction details.</string>
+    
+    <!-- Photo Library Permission -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>CashPotato accesses your photo library to select receipt images for processing.</string>
 </dict>
 </plist>

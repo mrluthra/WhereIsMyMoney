@@ -24,18 +24,18 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		EBDA96392DFE36F10078CD8E /* SpendTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpendTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		EBDA96462DFE36F30078CD8E /* SpendTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpendTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		EBDA96502DFE36F30078CD8E /* SpendTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpendTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EBDA96392DFE36F10078CD8E /* CashPotato.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CashPotato.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EBDA96462DFE36F30078CD8E /* CashPotatoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CashPotatoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EBDA96502DFE36F30078CD8E /* CashPotatoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CashPotatoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		EBDBE4AF2E00F68600D6E5E1 /* Exceptions for "SpendTracker" folder in "SpendTracker" target */ = {
+		EBDBE4AF2E00F68600D6E5E1 /* Exceptions for "SpendTracker" folder in "CashPotato" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = EBDA96382DFE36F10078CD8E /* SpendTracker */;
+			target = EBDA96382DFE36F10078CD8E /* CashPotato */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -43,7 +43,7 @@
 		EBDA963B2DFE36F10078CD8E /* SpendTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				EBDBE4AF2E00F68600D6E5E1 /* Exceptions for "SpendTracker" folder in "SpendTracker" target */,
+				EBDBE4AF2E00F68600D6E5E1 /* Exceptions for "SpendTracker" folder in "CashPotato" target */,
 			);
 			path = SpendTracker;
 			sourceTree = "<group>";
@@ -122,9 +122,9 @@
 		EBDA963A2DFE36F10078CD8E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				EBDA96392DFE36F10078CD8E /* SpendTracker.app */,
-				EBDA96462DFE36F30078CD8E /* SpendTrackerTests.xctest */,
-				EBDA96502DFE36F30078CD8E /* SpendTrackerUITests.xctest */,
+				EBDA96392DFE36F10078CD8E /* CashPotato.app */,
+				EBDA96462DFE36F30078CD8E /* CashPotatoTests.xctest */,
+				EBDA96502DFE36F30078CD8E /* CashPotatoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -132,9 +132,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		EBDA96382DFE36F10078CD8E /* SpendTracker */ = {
+		EBDA96382DFE36F10078CD8E /* CashPotato */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = EBDA965A2DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "SpendTracker" */;
+			buildConfigurationList = EBDA965A2DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "CashPotato" */;
 			buildPhases = (
 				EBDA96352DFE36F10078CD8E /* Sources */,
 				EBDA96362DFE36F10078CD8E /* Frameworks */,
@@ -151,16 +151,16 @@
 				EBDA96752DFE37980078CD8E /* Views */,
 				EBE7B7C02E0216A000C31DDE /* Monetization */,
 			);
-			name = SpendTracker;
+			name = CashPotato;
 			packageProductDependencies = (
 			);
 			productName = SpendTracker;
-			productReference = EBDA96392DFE36F10078CD8E /* SpendTracker.app */;
+			productReference = EBDA96392DFE36F10078CD8E /* CashPotato.app */;
 			productType = "com.apple.product-type.application";
 		};
-		EBDA96452DFE36F30078CD8E /* SpendTrackerTests */ = {
+		EBDA96452DFE36F30078CD8E /* CashPotatoTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = EBDA965D2DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "SpendTrackerTests" */;
+			buildConfigurationList = EBDA965D2DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "CashPotatoTests" */;
 			buildPhases = (
 				EBDA96422DFE36F30078CD8E /* Sources */,
 				EBDA96432DFE36F30078CD8E /* Frameworks */,
@@ -174,16 +174,16 @@
 			fileSystemSynchronizedGroups = (
 				EBDA96492DFE36F30078CD8E /* SpendTrackerTests */,
 			);
-			name = SpendTrackerTests;
+			name = CashPotatoTests;
 			packageProductDependencies = (
 			);
 			productName = SpendTrackerTests;
-			productReference = EBDA96462DFE36F30078CD8E /* SpendTrackerTests.xctest */;
+			productReference = EBDA96462DFE36F30078CD8E /* CashPotatoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		EBDA964F2DFE36F30078CD8E /* SpendTrackerUITests */ = {
+		EBDA964F2DFE36F30078CD8E /* CashPotatoUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = EBDA96602DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "SpendTrackerUITests" */;
+			buildConfigurationList = EBDA96602DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "CashPotatoUITests" */;
 			buildPhases = (
 				EBDA964C2DFE36F30078CD8E /* Sources */,
 				EBDA964D2DFE36F30078CD8E /* Frameworks */,
@@ -197,11 +197,11 @@
 			fileSystemSynchronizedGroups = (
 				EBDA96532DFE36F30078CD8E /* SpendTrackerUITests */,
 			);
-			name = SpendTrackerUITests;
+			name = CashPotatoUITests;
 			packageProductDependencies = (
 			);
 			productName = SpendTrackerUITests;
-			productReference = EBDA96502DFE36F30078CD8E /* SpendTrackerUITests.xctest */;
+			productReference = EBDA96502DFE36F30078CD8E /* CashPotatoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -241,9 +241,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				EBDA96382DFE36F10078CD8E /* SpendTracker */,
-				EBDA96452DFE36F30078CD8E /* SpendTrackerTests */,
-				EBDA964F2DFE36F30078CD8E /* SpendTrackerUITests */,
+				EBDA96382DFE36F10078CD8E /* CashPotato */,
+				EBDA96452DFE36F30078CD8E /* CashPotatoTests */,
+				EBDA964F2DFE36F30078CD8E /* CashPotatoUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -299,12 +299,12 @@
 /* Begin PBXTargetDependency section */
 		EBDA96482DFE36F30078CD8E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = EBDA96382DFE36F10078CD8E /* SpendTracker */;
+			target = EBDA96382DFE36F10078CD8E /* CashPotato */;
 			targetProxy = EBDA96472DFE36F30078CD8E /* PBXContainerItemProxy */;
 		};
 		EBDA96522DFE36F30078CD8E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = EBDA96382DFE36F10078CD8E /* SpendTracker */;
+			target = EBDA96382DFE36F10078CD8E /* CashPotato */;
 			targetProxy = EBDA96512DFE36F30078CD8E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -440,11 +440,15 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SpendTracker/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = WhereIsMyMoney;
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "WhereIsMyMoney uses Face ID to securely authenticate and protect your financial data.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = CashPotato;
+				INFOPLIST_KEY_NSCameraUsageDescription = "CashPotato needs camera access to scan receipts and automatically extract transaction details.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "CashPotato uses Face ID to securely authenticate and protect your financial data.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "CashPotato saves scanned receipts to your photo library for easy access and backup.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CashPotato needs photo library access to save scanned receipts and access existing receipt images.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -471,11 +475,15 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SpendTracker/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = WhereIsMyMoney;
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "WhereIsMyMoney uses Face ID to securely authenticate and protect your financial data.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = CashPotato;
+				INFOPLIST_KEY_NSCameraUsageDescription = "CashPotato needs camera access to scan receipts and automatically extract transaction details.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "CashPotato uses Face ID to securely authenticate and protect your financial data.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "CashPotato saves scanned receipts to your photo library for easy access and backup.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CashPotato needs photo library access to save scanned receipts and access existing receipt images.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -571,7 +579,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		EBDA965A2DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "SpendTracker" */ = {
+		EBDA965A2DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "CashPotato" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EBDA965B2DFE36F40078CD8E /* Debug */,
@@ -580,7 +588,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		EBDA965D2DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "SpendTrackerTests" */ = {
+		EBDA965D2DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "CashPotatoTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EBDA965E2DFE36F40078CD8E /* Debug */,
@@ -589,7 +597,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		EBDA96602DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "SpendTrackerUITests" */ = {
+		EBDA96602DFE36F40078CD8E /* Build configuration list for PBXNativeTarget "CashPotatoUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EBDA96612DFE36F40078CD8E /* Debug */,

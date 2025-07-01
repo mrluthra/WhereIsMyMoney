@@ -3,6 +3,7 @@ import SwiftUI
 struct AccountCardView: View {
     let account: Account
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject var currencyManager: CurrencyManager
     
     private func colorForAccount(_ colorName: String) -> Color {
         switch colorName {
@@ -90,7 +91,7 @@ struct AccountCardView: View {
                     if account.currentBalance < 0 {
                         // Show debt amount
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("$\(abs(account.currentBalance), specifier: "%.2f")")
+                            Text(currencyManager.formatAmount(abs(account.currentBalance)))
                                 .font(.headline)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.red)
@@ -101,7 +102,7 @@ struct AccountCardView: View {
                     } else {
                         // Show available credit
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("$\(account.currentBalance, specifier: "%.2f")")
+                            Text(currencyManager.formatAmount(account.currentBalance))
                                 .font(.headline)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.green)
@@ -112,7 +113,7 @@ struct AccountCardView: View {
                     }
                 } else {
                     // Regular debit account
-                    Text("$\(account.currentBalance, specifier: "%.2f")")
+                    Text(currencyManager.formatAmount(account.currentBalance))
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(account.currentBalance >= 0 ? .green : .red)
