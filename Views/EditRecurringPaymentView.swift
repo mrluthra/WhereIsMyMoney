@@ -6,6 +6,9 @@ struct EditRecurringPaymentView: View {
     @ObservedObject var accountStore: AccountStore
     @EnvironmentObject var currencyManager: CurrencyManager
     
+    // ADD: CategoryStore to access custom categories
+    @StateObject private var categoryStore = CategoryStore()
+    
     let payment: RecurringPayment
     let account: Account
     
@@ -20,15 +23,15 @@ struct EditRecurringPaymentView: View {
     @State private var selectedCategoryIcon: String
     @State private var isActive: Bool
     
-    // Category options based on transaction type
-    private var availableCategories: [TransactionCategory] {
+    // UPDATED: Use custom categories instead of default enum
+    private var availableCategories: [CustomCategory] {
         switch selectedType {
         case .income:
-            return [.salary, .freelance, .investment, .gift, .bonus]
+            return categoryStore.categoriesForType(.income)
         case .expense:
-            return [.food, .transportation, .shopping, .entertainment, .bills, .healthcare, .education, .travel, .other]
+            return categoryStore.categoriesForType(.expense)
         case .transfer:
-            return [.transfer]
+            return [] // No categories for transfers
         }
     }
     
@@ -37,6 +40,18 @@ struct EditRecurringPaymentView: View {
         case .income: return .green
         case .expense: return .red
         case .transfer: return .blue
+        }
+    }
+    
+    private func colorForCategoryColor(_ colorName: String) -> Color {
+        switch colorName {
+        case "Blue": return .blue
+        case "Green": return .green
+        case "Purple": return .purple
+        case "Orange": return .orange
+        case "Red": return .red
+        case "Yellow": return .yellow
+        default: return .blue
         }
     }
     
@@ -93,8 +108,8 @@ struct EditRecurringPaymentView: View {
                     .onChange(of: selectedType) { oldValue, newValue in
                         // Reset category when type changes
                         if let firstCategory = availableCategories.first {
-                            selectedCategory = firstCategory.rawValue
-                            selectedCategoryIcon = firstCategory.systemImage
+                            selectedCategory = firstCategory.name
+                            selectedCategoryIcon = firstCategory.icon
                         }
                     }
                 }
@@ -131,17 +146,34 @@ struct EditRecurringPaymentView: View {
                         }
                         .padding(.vertical)
                     } else {
+                        // UPDATED: Show custom categories with icons and colors
                         Picker("Category", selection: $selectedCategory) {
-                            ForEach(availableCategories, id: \.rawValue) { category in
-                                Label(category.rawValue, systemImage: category.systemImage)
-                                    .tag(category.rawValue)
+                            ForEach(availableCategories, id: \.id) { category in
+                                HStack {
+                                    Image(systemName: category.icon)
+                                        .foregroundColor(colorForCategoryColor(category.color))
+                                    Text(category.name)
+                                }
+                                .tag(category.name)
                             }
                         }
                         .onChange(of: selectedCategory) { oldValue, newValue in
                             // Update icon when category changes
-                            if let category = availableCategories.first(where: { $0.rawValue == newValue }) {
-                                selectedCategoryIcon = category.systemImage
+                            if let category = availableCategories.first(where: { $0.name == newValue }) {
+                                selectedCategoryIcon = category.icon
                             }
+                        }
+                        
+                        // Show selected category preview
+                        if let selectedCat = availableCategories.first(where: { $0.name == selectedCategory }) {
+                            HStack {
+                                Image(systemName: selectedCat.icon)
+                                    .foregroundColor(colorForCategoryColor(selectedCat.color))
+                                Text("Selected: \(selectedCat.name)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
@@ -189,10 +221,10 @@ struct EditRecurringPaymentView: View {
         }
         .onAppear {
             // Ensure category is properly set on appear
-            if !availableCategories.isEmpty && !availableCategories.contains(where: { $0.rawValue == selectedCategory }) {
+            if !availableCategories.isEmpty && !availableCategories.contains(where: { $0.name == selectedCategory }) {
                 if let firstCategory = availableCategories.first {
-                    selectedCategory = firstCategory.rawValue
-                    selectedCategoryIcon = firstCategory.systemImage
+                    selectedCategory = firstCategory.name
+                    selectedCategoryIcon = firstCategory.icon
                 }
             }
         }
