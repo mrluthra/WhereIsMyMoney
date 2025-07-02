@@ -5,15 +5,19 @@ struct HomeView: View {
     @StateObject private var recurringStore = RecurringPaymentStore()
     @StateObject private var authManager = AuthenticationManager()
     @StateObject private var receiptManager = ReceiptManager()
-    // MARK: - Use EnvironmentObject instead of StateObject
     @EnvironmentObject var currencyManager: CurrencyManager
+    
+    // MARK: - Environment and Device Detection
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.verticalSizeClass) var verticalSizeClass
+    @Environment(\.colorScheme) var colorScheme
     
     // MARK: - Monetization Objects
     @StateObject private var subscriptionManager = SubscriptionManager()
     @StateObject private var adManager = AdManager()
     @StateObject private var usageAnalytics = UsageAnalytics.shared
     
-    // MARK: - NEW: Viral Features
+    // MARK: - Viral Features
     @StateObject private var viralManager = ViralContentManager()
     @State private var showingViralHub = false
     @State private var showingQuickMeme = false
@@ -37,11 +41,40 @@ struct HomeView: View {
     @State private var accountToDelete: Account?
     @State private var showingReports = false
     
+    // iPad specific states
+    @State private var selectedSidebarItem: SidebarItem? = .dashboard
+    @State private var columnVisibility = NavigationSplitViewVisibility.automatic
+    
+    enum SidebarItem: CaseIterable, Identifiable {
+        case dashboard, accounts, transactions, reports, settings
+        
+        var id: Self { self }
+        
+        var title: String {
+            switch self {
+            case .dashboard: return "Dashboard"
+            case .accounts: return "Accounts"
+            case .transactions: return "Transactions"
+            case .reports: return "Reports"
+            case .settings: return "Settings"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .dashboard: return "house.fill"
+            case .accounts: return "creditcard.fill"
+            case .transactions: return "list.bullet"
+            case .reports: return "chart.bar.fill"
+            case .settings: return "gear"
+            }
+        }
+    }
+    
     private var duePayments: [RecurringPayment] {
         recurringStore.getDuePayments()
     }
     
-    // FIXED: Check if user has Pro subscription (including mock)
     private var isProUser: Bool {
         #if DEBUG
         return subscriptionManager.isSubscribed || (subscriptionManager.isDevelopmentMode && subscriptionManager.mockProStatus)
@@ -50,225 +83,36 @@ struct HomeView: View {
         #endif
     }
     
+    // iPad detection
+    private var isIPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+    }
+    
+    // Compact layout detection
+    private var isCompactLayout: Bool {
+        horizontalSizeClass == .compact || verticalSizeClass == .compact
+    }
+    
     var body: some View {
         ZStack {
             if authManager.shouldShowAuthentication() {
-                // Show authentication screen
-                if authManager.showingPasscodeEntry {
-                    PasscodeEntryView(authManager: authManager)
-                        .transition(.opacity)
-                } else {
-                    // Trigger authentication on appear
-                    Color.black
-                        .ignoresSafeArea()
-                        .onAppear {
-                            authManager.authenticateUser()
-                        }
-                }
+                authenticationView
             } else {
-                // Show main app content
-                mainContent
+                if isIPad && !isCompactLayout {
+                    iPadSplitView
+                } else {
+                    iPhoneNavigationView
+                }
             }
         }
         .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
         .onAppear {
-            // Check authentication when app appears
-            if authManager.authenticationMethod != .none && !authManager.isAuthenticated {
-                authManager.authenticateUser()
-            }
-            
-            // Configure the scheduler with store instances
-            RecurringPaymentScheduler.shared.configure(
-                recurringStore: recurringStore,
-                accountStore: accountStore
-            )
-            
-            // Process any due payments when app launches
-//            let processedTransactions = recurringStore.checkAndProcessDuePayments()
-            _ = RecurringPaymentScheduler.shared.checkAndProcessDuePayments()
-            
-            // Add processed transactions to their respective accounts
-//            for transaction in processedTransactions {
-//                accountStore.addTransaction(transaction, to: transaction.accountId)
-//            }
-            RecurringPaymentScheduler.shared.scheduleUpcomingPaymentNotifications()
-            
-            // Track app open
-            usageAnalytics.trackAppOpen()
+            setupApp()
         }
-//        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-//            // Re-authenticate when app comes to foreground
-//            if authManager.authenticationMethod != .none {
-//                authManager.lockApp()
-//                authManager.authenticateUser()
-//            }
-//        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            // Re-authenticate when app comes to foreground
-            if authManager.authenticationMethod != .none {
-                authManager.lockApp()
-                authManager.authenticateUser()
-            }
-            
-            // Check for new due payments when returning to foreground
-            RecurringPaymentScheduler.shared.applicationWillEnterForeground()
+            handleForegroundReturn()
         }
-    }
-    
-    private var mainContent: some View {
-        NavigationView {
-            ScrollView {
-                LazyVStack(spacing: 20) {
-                    // Header with financial overview + NEW: Viral Commentary
-                    financialOverviewSection
-                    
-                    // NEW: Viral Commentary Box (only show if user has interesting data)
-//                    if shouldShowViralCommentary {
-//                        viralCommentarySection
-//                    }
-                    
-                    // FIXED: Subscription status banner ONLY for free users
-                    if !isProUser {
-                        PromotionalBannerView(subscriptionManager: subscriptionManager)
-                            .padding(.horizontal)
-                    }
-                    
-                    // Due Payments Alert
-                    if !duePayments.isEmpty {
-                        duePaymentsAlert
-                    }
-                    
-                    // FIXED: Quick Actions (Monetized) - NOW WITH VIRAL ACTIONS
-                    monetizedQuickActionsSection
-                    
-                    // FIXED: Ad Banner ONLY for free users
-                    if !isProUser {
-                        AdBannerView(
-                            subscriptionManager: subscriptionManager,
-                            adManager: adManager,
-                            placement: .homeViewBanner
-                        )
-                    }
-                    
-                    // Accounts Section
-                    accountsSection
-                }
-            }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle("CashPotato")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    // FIXED: Subscription status indicator - only show crown for actual Pro users
-                    HStack {
-                        if isProUser {
-                            Image(systemName: "crown.fill")
-                                .foregroundColor(.orange)
-                                .font(.caption)
-                        }
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 12) {
-                        // NEW: Viral Icons
-//                        Button(action: {
-//                            showingQuickMeme = true
-//                            usageAnalytics.trackFeatureUsage("quick_meme")
-//                        }) {
-//                            ZStack {
-//                                Circle()
-//                                    .fill(
-//                                        LinearGradient(
-//                                            colors: [.purple, .blue],
-//                                            startPoint: .topLeading,
-//                                            endPoint: .bottomTrailing
-//                                        )
-//                                    )
-//                                    .frame(width: 28, height: 28)
-//
-//                                Text("🎭")
-//                                    .font(.system(size: 12))
-//                            }
-//                            .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
-//                        }
-//                        .buttonStyle(PlainButtonStyle())
-                        
-//                        Button(action: {
-//                            showingViralHub = true
-//                            usageAnalytics.trackFeatureUsage("viral_hub")
-//                        }) {
-//                            ZStack {
-//                                Circle()
-//                                    .fill(
-//                                        LinearGradient(
-//                                            colors: [.orange, .red],
-//                                            startPoint: .topLeading,
-//                                            endPoint: .bottomTrailing
-//                                        )
-//                                    )
-//                                    .frame(width: 28, height: 28)
-//
-//                                Image(systemName: "flame.fill")
-//                                    .foregroundColor(.white)
-//                                    .font(.system(size: 12, weight: .bold))
-//                            }
-//                            .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
-//                        }
-//                        .buttonStyle(PlainButtonStyle())
-                        
-                        // Existing icons (slightly spaced out)
-                        HStack(spacing: 12) {
-                            // FIXED: AI Insights button - always show lock for non-Pro users
-                            Button(action: {
-                                if subscriptionManager.canAccessAIInsights() {
-                                    showingAIInsights = true
-                                } else {
-                                    subscriptionManager.showPaywallIfNeeded(for: .aiInsights)
-                                }
-                                usageAnalytics.trackFeatureUsage("ai_insights_tap")
-                            }) {
-                                Image(systemName: isProUser ? "brain.head.profile" : "lock.fill")
-                                    .font(.title3)
-                                    .foregroundColor(isProUser ? .purple : .gray)
-                            }
-                            
-                            // FIXED: Receipts button - always show lock for non-Pro users
-                            Button(action: {
-                                if subscriptionManager.canAccessReceiptsList() {
-                                    showingReceiptsList = true
-                                } else {
-                                    subscriptionManager.showPaywallIfNeeded(for: .receiptsList)
-                                }
-                                usageAnalytics.trackFeatureUsage("receipts_tap")
-                            }) {
-                                Image(systemName: isProUser ? "doc.text.image" : "lock.fill")
-                                    .font(.title3)
-                                    .foregroundColor(isProUser ? .indigo : .gray)
-                            }
-                            
-                            // Manage Categories button
-                            Button(action: {
-                                showingManageCategories = true
-                                usageAnalytics.trackFeatureUsage("categories_tap")
-                            }) {
-                                Image(systemName: "tag.circle")
-                                    .font(.title3)
-                                    .foregroundColor(.orange)
-                            }
-                            
-                            // Settings button
-                            Button(action: { showingSettings = true }) {
-                                Image(systemName: "gear")
-                                    .font(.title3)
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        // Existing sheets...
+        // MARK: - All Sheets (moved here from extension)
         .sheet(isPresented: $showingAddAccount) {
             if subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) {
                 AddAccountView(accountStore: accountStore)
@@ -340,9 +184,9 @@ struct HomeView: View {
         .sheet(isPresented: $showingAIInsights) {
             if subscriptionManager.canAccessAIInsights() {
                 EnhancedAIInsightsView(
-                        accountStore: accountStore,
-                        subscriptionManager: subscriptionManager
-                    )
+                    accountStore: accountStore,
+                    subscriptionManager: subscriptionManager
+                )
             } else {
                 FeatureLockedView(
                     subscriptionManager: subscriptionManager,
@@ -364,7 +208,6 @@ struct HomeView: View {
                 adManager: adManager
             )
         }
-        // NEW: Viral Sheets
         .sheet(isPresented: $showingViralHub) {
             ViralHubView()
                 .environmentObject(viralManager)
@@ -400,236 +243,734 @@ struct HomeView: View {
         }
     }
     
-    // MARK: - NEW: Viral Features
-    
-    private var shouldShowViralCommentary: Bool {
-        // Show viral commentary if user has debt, very low assets, or interesting financial situation
-        return accountStore.netWorth() < 0 ||
-               accountStore.totalAssets() < 1000 ||
-               accountStore.totalDebt() > 5000 ||
-               accountStore.accounts.count >= 2
-    }
-    
-    private var viralCommentarySection: some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .top, spacing: 8) {
-                // Potato mascot
-                Text("🥔")
-                    .font(.title3)
-                
-                // Comment bubble
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(generateViralComment())
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                    
-                    // Action buttons
-//                    HStack(spacing: 8) {
-//                        Button("Create Meme") {
-//                            showingQuickMeme = true
-//                        }
-//                        .font(.caption)
-//                        .buttonStyle(.bordered)
-//
-//                        Button("Share Journey") {
-//                            showingShareWin = true
-//                        }
-//                        .font(.caption)
-//                        .buttonStyle(.borderedProminent)
-//
-//                        Spacer()
-//
-//                        Button("More Viral") {
-//                            showingViralHub = true
-//                        }
-//                        .font(.caption)
-//                        .foregroundColor(.orange)
-//                    }
-                }
-                
-                Spacer()
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                    )
-            )
-        }
-        .padding(.horizontal)
-    }
-    
-    private func generateViralComment() -> String {
-        let netWorth = accountStore.netWorth()
-        let debt = accountStore.totalDebt()
-        let assets = accountStore.totalAssets()
-        
-        if netWorth < -10000 {
-            return "This debt era is about to become the most epic comeback story 🥔✨"
-        } else if netWorth < 0 {
-            return "POV: You're about to have the best financial glow-up of 2025 💪"
-        } else if assets < 500 {
-            return "Small steps, big dreams! Your financial journey is just getting started 🌱"
-        } else if debt > 5000 {
-            return "Not me documenting this entire debt-free journey for TikTok 📱"
-        } else {
-            return "Your financial transformation arc is about to be ICONIC 👑"
-        }
-    }
-    
-    // MARK: - UPDATED: Quick Actions with Viral Features
-    
-    private var monetizedQuickActionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Quick Actions")
-                    .font(.headline)
-                
-                Spacer()
-                
-                // FIXED: Only show "Upgrade for More" for free users
-                if !isProUser {
-                    Button("Upgrade for More") {
-                        subscriptionManager.showingPaywall = true
+    // MARK: - Authentication View
+    private var authenticationView: some View {
+        Group {
+            if authManager.showingPasscodeEntry {
+                PasscodeEntryView(authManager: authManager)
+                    .transition(.opacity)
+            } else {
+                Color.black
+                    .ignoresSafeArea()
+                    .onAppear {
+                        authManager.authenticateUser()
                     }
-                    .font(.caption)
-                    .foregroundColor(.blue)
+            }
+        }
+    }
+    
+    // MARK: - iPad Split View Layout
+    private var iPadSplitView: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            iPadSidebar
+        } detail: {
+            iPadDetailView
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+    
+    private var iPadSidebar: some View {
+        List(SidebarItem.allCases, selection: $selectedSidebarItem) { item in
+            NavigationLink(value: item) {
+                Label(item.title, systemImage: item.icon)
+            }
+        }
+        .navigationTitle("CashPotato")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button("Add Account") { handleAddAccount() }
+                    Button("Add Transaction") { showingQuickAddTransaction = true }
+                    Button("Scan Receipt") { handleReceiptScanning() }
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
-            .padding(.horizontal)
+        }
+    }
+    
+    private var iPadDetailView: some View {
+        Group {
+            switch selectedSidebarItem ?? .dashboard {
+            case .dashboard:
+                iPadDashboardView
+            case .accounts:
+                iPadAccountsView
+            case .transactions:
+                iPadTransactionsView
+            case .reports:
+                iPadReportsView
+            case .settings:
+                iPadSettingsView
+            }
+        }
+        .navigationBarTitleDisplayMode(.large)
+    }
+    
+    // MARK: - iPhone Navigation View
+    private var iPhoneNavigationView: some View {
+        NavigationView {
+            mainContent
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+    }
+    
+    // MARK: - Main Content (iPhone Layout)
+    private var mainContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 20) {
+                // Header with financial overview
+                financialOverviewSection
+                
+                // Subscription status banner ONLY for free users
+                if !isProUser {
+                    PromotionalBannerView(subscriptionManager: subscriptionManager)
+                        .padding(.horizontal)
+                }
+                
+                // Due Payments Alert
+                if !duePayments.isEmpty {
+                    duePaymentsAlert
+                }
+                
+                // Quick Actions (Monetized)
+                monetizedQuickActionsSection
+                
+                // Ad Banner ONLY for free users
+                if !isProUser {
+                    AdBannerView(
+                        subscriptionManager: subscriptionManager,
+                        adManager: adManager,
+                        placement: .homeViewBanner
+                    )
+                }
+                
+                // Accounts Section
+                accountsSection
+            }
+        }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .navigationTitle("CashPotato")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                HStack {
+                    if isProUser {
+                        Image(systemName: "crown.fill")
+                            .foregroundColor(.orange)
+                            .font(.caption)
+                    }
+                }
+            }
             
-            VStack(spacing: 12) {
+            ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 12) {
-                    MonetizedQuickActionButton(
-                        title: "Add Transaction",
-                        icon: "plus.square.fill",
-                        color: .green,
-                        isLocked: false,
-                        action: {
+                    Button(action: { handleAIInsights() }) {
+                        Image(systemName: isProUser ? "brain.head.profile" : "lock.fill")
+                            .font(.title3)
+                            .foregroundColor(isProUser ? .purple : .gray)
+                    }
+                    
+                    Button(action: {
+                        if subscriptionManager.canAccessReceiptsList() {
+                            showingReceiptsList = true
+                        } else {
+                            subscriptionManager.showPaywallIfNeeded(for: .receiptsList)
+                        }
+                        usageAnalytics.trackFeatureUsage("receipts_tap")
+                    }) {
+                        Image(systemName: isProUser ? "doc.text.image" : "lock.fill")
+                            .font(.title3)
+                            .foregroundColor(isProUser ? .indigo : .gray)
+                    }
+                    
+                    Button(action: {
+                        showingManageCategories = true
+                        usageAnalytics.trackFeatureUsage("categories_tap")
+                    }) {
+                        Image(systemName: "tag.circle")
+                            .font(.title3)
+                            .foregroundColor(.orange)
+                    }
+                    
+                    Button(action: { showingSettings = true }) {
+                        Image(systemName: "gear")
+                            .font(.title3)
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - iPad Dashboard View
+    private var iPadDashboardView: some View {
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 20),
+                GridItem(.flexible(), spacing: 20)
+            ], spacing: 20) {
+                // Financial Overview Card
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Financial Overview")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Spacer()
+                        
+                        if isProUser {
+                            HStack {
+                                Image(systemName: "crown.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                Text("Pro")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.orange)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.1))
+                            .clipShape(Capsule())
+                        }
+                    }
+                    
+                    VStack(spacing: 12) {
+                        HStack {
+                            Text("Net Worth")
+                            Spacer()
+                            Text(currencyManager.formatAmount(accountStore.netWorth()))
+                                .fontWeight(.semibold)
+                                .foregroundColor(accountStore.netWorth() >= 0 ? .green : .red)
+                        }
+                        
+                        HStack {
+                            Text("Total Assets")
+                            Spacer()
+                            Text(currencyManager.formatAmount(accountStore.totalAssets()))
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                        }
+                        
+                        HStack {
+                            Text("Total Debt")
+                            Spacer()
+                            Text(currencyManager.formatAmount(accountStore.totalDebt()))
+                                .fontWeight(.semibold)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .font(.subheadline)
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                // Quick Actions Card
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Quick Actions")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 12) {
+                        iPadQuickActionButton(title: "Add Transaction", icon: "plus.square.fill", color: .green) {
                             showingQuickAddTransaction = true
                             usageAnalytics.trackFeatureUsage("add_transaction")
                         }
-                    )
-                    
-                    // FIXED: Always show lock icon for non-Pro users
-                    MonetizedQuickActionButton(
-                        title: "Scan Receipt",
-                        icon: isProUser ? "camera.viewfinder" : "lock.fill",
-                        color: isProUser ? .orange : .gray,
-                        isLocked: !isProUser,
-                        action: {
-                            if subscriptionManager.canAccessReceiptScanning() {
-                                showingScanReceipt = true
-                            } else {
-                                subscriptionManager.showPaywallIfNeeded(for: .receiptScanning)
-                            }
-                            usageAnalytics.trackFeatureUsage("scan_receipt")
+                        
+                        iPadQuickActionButton(
+                            title: "Scan Receipt",
+                            icon: isProUser ? "camera.viewfinder" : "lock.fill",
+                            color: isProUser ? .orange : .gray,
+                            isLocked: !isProUser
+                        ) {
+                            handleReceiptScanning()
                         }
-                    )
+                        
+                        iPadQuickActionButton(
+                            title: "Add Account",
+                            icon: subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? "plus.circle.fill" : "lock.fill",
+                            color: subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? .blue : .gray,
+                            isLocked: !subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count)
+                        ) {
+                            handleAddAccount()
+                        }
+                        
+                        iPadQuickActionButton(
+                            title: "AI Insights",
+                            icon: isProUser ? "brain.head.profile" : "lock.fill",
+                            color: isProUser ? .purple : .gray,
+                            isLocked: !isProUser
+                        ) {
+                            handleAIInsights()
+                        }
+                        
+                        iPadQuickActionButton(title: "Reports", icon: isProUser ? "chart.bar.fill" : "lock.fill", color: isProUser ? .indigo : .gray, isLocked: !isProUser) {
+                            selectedSidebarItem = .reports
+                        }
+                        
+                        iPadQuickActionButton(title: "Settings", icon: "gear", color: .gray) {
+                            selectedSidebarItem = .settings
+                        }
+                    }
                 }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 
-                HStack(spacing: 12) {
-                    MonetizedQuickActionButton(
-                        title: "Add Account",
-                        icon: subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? "plus.circle.fill" : "lock.fill",
-                        color: subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? .blue : .gray,
-                        isLocked: !subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count),
-                        action: {
-                            if subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) {
-                                showingAddAccount = true
-                            } else {
-                                subscriptionManager.showPaywallIfNeeded(for: .addAccount(currentCount: accountStore.accounts.count))
-                            }
-                            usageAnalytics.trackFeatureUsage("add_account")
-                        }
-                    )
-                    
-                    MonetizedQuickActionButton(
-                        title: "Transfer Money",
-                        icon: "arrow.left.arrow.right.circle.fill",
-                        color: .purple,
-                        isLocked: false,
-                        action: {
-                            showingAddTransfer = true
-                            usageAnalytics.trackFeatureUsage("transfer_money")
-                        }
-                    )
-                }
-                
-                HStack(spacing: 12) {
-                    // FIXED: Always show lock icon for non-Pro users
-                    MonetizedQuickActionButton(
-                        title: "AI Insights",
-                        icon: isProUser ? "brain.head.profile" : "lock.fill",
-                        color: isProUser ? .purple : .gray,
-                        isLocked: !isProUser,
-                        action: {
-                            if subscriptionManager.canAccessAIInsights() {
-                                showingAIInsights = true
-                            } else {
-                                subscriptionManager.showPaywallIfNeeded(for: .aiInsights)
-                            }
-                            usageAnalytics.trackFeatureUsage("ai_insights")
-                        }
-                    )
-                    
-                    MonetizedQuickActionButton(
-                        title: "View Reports",
-                        icon: isProUser ? "chart.bar.fill" : "lock.fill",
-                        color: isProUser ? .cyan : .gray,
-                        isLocked: !isProUser,
-                        action: {
-                            showingReports = true
-                            usageAnalytics.trackFeatureUsage("view_reports")
-                            
-                            // Show interstitial ad for free users
-                            if !isProUser {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    showingInterstitialAd = true
+                // Due Payments Card (if any)
+                if !duePayments.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Due Payments")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        ForEach(duePayments.prefix(3), id: \.id) { payment in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(payment.name)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Text("Due: \(payment.nextDueDate, style: .date)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
                                 }
+                                Spacer()
+                                Text(currencyManager.formatAmount(payment.amount))
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.red)
                             }
                         }
-                    )
+                        
+                        if duePayments.count > 3 {
+                            Button("View All Due Payments") {
+                                showingDuePayments = true
+                            }
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 }
                 
-                // NEW: Viral Actions Row
-//                HStack(spacing: 12) {
-//                    MonetizedQuickActionButton(
-//                        title: "Create Meme",
-//                        icon: "🎭",
-//                        color: .purple,
-//                        isLocked: false,
-//                        action: {
-//                            showingQuickMeme = true
-//                            usageAnalytics.trackFeatureUsage("create_meme")
-//                        }
-//                    )
-//
-//                    MonetizedQuickActionButton(
-//                        title: "Share Win",
-//                        icon: "🔥",
-//                        color: .orange,
-//                        isLocked: false,
-//                        action: {
-//                            showingShareWin = true
-//                            usageAnalytics.trackFeatureUsage("share_win")
-//                        }
-//                    )
-//                }
+                // Recent Transactions Card
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Recent Transactions")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    if accountStore.getAllTransactions().isEmpty {
+                        Text("No transactions yet")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(accountStore.getAllTransactions().sorted(by: { $0.date > $1.date }).prefix(5), id: \.id) { transaction in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(transaction.payee)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Text(transaction.date, style: .date)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Text(currencyManager.formatAmount(transaction.amount))
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(transaction.type == .income ? .green : .red)
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                // Pro Banner for free users
+                if !isProUser {
+                    VStack(spacing: 16) {
+                        HStack {
+                            Image(systemName: "crown.fill")
+                                .foregroundColor(.orange)
+                            Text("Upgrade to Pro")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                        }
+                        
+                        Text("Unlock AI insights, unlimited accounts, receipt scanning, and more!")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        
+                        Button("Upgrade Now") {
+                            subscriptionManager.showingPaywall = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.orange.opacity(0.3), lineWidth: 2)
+                    )
+                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                }
             }
-            .padding(.horizontal)
+            .padding()
+        }
+        .navigationTitle("Dashboard")
+        .background(Color(.systemGroupedBackground))
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Add Transaction") {
+                    showingQuickAddTransaction = true
+                }
+            }
         }
     }
     
-    // MARK: - Existing sections (unchanged)
-    // ... [All your existing code for financialOverviewSection, duePaymentsAlert, accountsSection, etc.]
+    // MARK: - iPad Accounts View
+    private var iPadAccountsView: some View {
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 20),
+                GridItem(.flexible(), spacing: 20),
+                GridItem(.flexible(), spacing: 20)
+            ], spacing: 20) {
+                // Add Account Card
+                Button(action: { handleAddAccount() }) {
+                    VStack(spacing: 16) {
+                        Image(systemName: subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? "plus.circle.fill" : "lock.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? .blue : .gray)
+                        
+                        Text("Add Account")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 120)
+                    .background(Color(.systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.blue.opacity(0.3), lineWidth: 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.blue.opacity(0.05))
+                            )
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                // Account Cards
+                ForEach(accountStore.accounts) { account in
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Circle()
+                                .fill(colorForAccount(account.color))
+                                .frame(width: 12, height: 12)
+                            
+                            Text(account.name)
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            
+                            Spacer()
+                            
+                            Menu {
+                                Button("Edit Account") {
+                                    editAccount(account)
+                                }
+                                Button("Delete Account", role: .destructive) {
+                                    deleteAccount(account)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Balance")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(currencyManager.formatAmount(account.currentBalance))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(account.currentBalance >= 0 ? .primary : .red)
+                            }
+                            
+                            if !account.transactions.isEmpty {
+                                HStack {
+                                    Text("Transactions")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text("\(account.transactions.count)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    .onTapGesture {
+                        selectedSidebarItem = .accounts
+                    }
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("Accounts")
+        .background(Color(.systemGroupedBackground))
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Add Account") {
+                    handleAddAccount()
+                }
+            }
+        }
+    }
+    
+    // MARK: - iPad Transactions View
+    private var iPadTransactionsView: some View {
+        VStack {
+            if accountStore.getAllTransactions().isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 50))
+                        .foregroundColor(.secondary)
+                    
+                    Text("No Transactions Yet")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Add your first transaction to get started")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(accountStore.getAllTransactions().sorted(by: { $0.date > $1.date })) { transaction in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(transaction.payee)
+                                    .font(.headline)
+                                Text(transaction.date, style: .date)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text(currencyManager.formatAmount(transaction.amount))
+                                .font(.headline)
+                                .foregroundColor(transaction.type == .income ? .green : .red)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Transactions")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Add Transaction") {
+                    showingQuickAddTransaction = true
+                }
+            }
+        }
+    }
+    
+    // MARK: - iPad Reports View
+    private var iPadReportsView: some View {
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 20),
+                GridItem(.flexible(), spacing: 20)
+            ], spacing: 20) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Net Worth Trend")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text(currencyManager.formatAmount(accountStore.netWorth()))
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(accountStore.netWorth() >= 0 ? .green : .red)
+                    
+                    Text("Track your financial progress over time")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Spending Analysis")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    if isProUser {
+                        Text("View detailed spending patterns and insights")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Unlock with Pro")
+                                .font(.subheadline)
+                                .foregroundColor(.orange)
+                            
+                            Button("Upgrade") {
+                                subscriptionManager.showingPaywall = true
+                            }
+                            .font(.caption)
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Monthly Trends")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text("Analyze monthly income and expenses")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Category Breakdown")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text("See spending by category")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            }
+            .padding()
+        }
+        .navigationTitle("Reports")
+        .background(Color(.systemGroupedBackground))
+    }
+    
+    // MARK: - iPad Settings View
+    private var iPadSettingsView: some View {
+        Form {
+            Section("Account") {
+                NavigationLink("Security Settings") {
+                    SettingsView(authManager: authManager, subscriptionManager: subscriptionManager)
+                }
+            }
+            
+            Section("Features") {
+                NavigationLink("Categories") {
+                    ManageCategoriesView()
+                }
+                NavigationLink("Recurring Payments") {
+                    DuePaymentsView(
+                        duePayments: duePayments,
+                        recurringStore: recurringStore,
+                        accountStore: accountStore
+                    )
+                }
+            }
+            
+            Section("Pro Features") {
+                if !isProUser {
+                    Button("Upgrade to Pro") {
+                        subscriptionManager.showingPaywall = true
+                    }
+                } else {
+                    HStack {
+                        Image(systemName: "crown.fill")
+                            .foregroundColor(.orange)
+                        Text("Pro Active")
+                            .foregroundColor(.orange)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Settings")
+    }
+    
+    // MARK: - iPad Quick Action Button
+    private func iPadQuickActionButton(
+        title: String,
+        icon: String,
+        color: Color,
+        isLocked: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                ZStack {
+                    Image(systemName: icon)
+                        .font(.title2)
+                        .foregroundColor(isLocked ? .gray : color)
+                    
+                    if isLocked {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .background(
+                                Circle()
+                                    .fill(Color.orange)
+                                    .frame(width: 16, height: 16)
+                            )
+                            .offset(x: 8, y: -8)
+                    }
+                }
+                
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(isLocked ? .gray : .primary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
     
     // MARK: - Financial Overview Section
-    
     private var financialOverviewSection: some View {
         VStack(spacing: 12) {
             VStack(spacing: 8) {
@@ -656,7 +997,6 @@ struct HomeView: View {
                         .clipShape(Capsule())
                     }
                 }
-                
                 Text(currencyManager.formatAmount(accountStore.netWorth()))
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(accountStore.netWorth() >= 0 ? .green : .red)
@@ -675,8 +1015,106 @@ struct HomeView: View {
         .padding(.top, 20)
     }
     
-    // MARK: - Helper Views (Same as before)
+    // MARK: - Quick Actions Section
+    private var monetizedQuickActionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Quick Actions")
+                    .font(.headline)
+                
+                Spacer()
+                
+                if !isProUser {
+                    Button("Upgrade for More") {
+                        subscriptionManager.showingPaywall = true
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+            }
+            .padding(.horizontal)
+            
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    MonetizedQuickActionButton(
+                        title: "Add Transaction",
+                        icon: "plus.square.fill",
+                        color: .green,
+                        isLocked: false,
+                        action: {
+                            showingQuickAddTransaction = true
+                            usageAnalytics.trackFeatureUsage("add_transaction")
+                        }
+                    )
+                    
+                    MonetizedQuickActionButton(
+                        title: "Scan Receipt",
+                        icon: isProUser ? "camera.viewfinder" : "lock.fill",
+                        color: isProUser ? .orange : .gray,
+                        isLocked: !isProUser,
+                        action: {
+                            handleReceiptScanning()
+                        }
+                    )
+                }
+                
+                HStack(spacing: 12) {
+                    MonetizedQuickActionButton(
+                        title: "Add Account",
+                        icon: subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? "plus.circle.fill" : "lock.fill",
+                        color: subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? .blue : .gray,
+                        isLocked: !subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count),
+                        action: {
+                            handleAddAccount()
+                        }
+                    )
+                    
+                    MonetizedQuickActionButton(
+                        title: "Transfer Money",
+                        icon: "arrow.left.arrow.right.circle.fill",
+                        color: .purple,
+                        isLocked: false,
+                        action: {
+                            showingAddTransfer = true
+                            usageAnalytics.trackFeatureUsage("transfer_money")
+                        }
+                    )
+                }
+                
+                HStack(spacing: 12) {
+                    MonetizedQuickActionButton(
+                        title: "AI Insights",
+                        icon: isProUser ? "brain.head.profile" : "lock.fill",
+                        color: isProUser ? .purple : .gray,
+                        isLocked: !isProUser,
+                        action: {
+                            handleAIInsights()
+                        }
+                    )
+                    
+                    MonetizedQuickActionButton(
+                        title: "View Reports",
+                        icon: isProUser ? "chart.bar.fill" : "lock.fill",
+                        color: isProUser ? .cyan : .gray,
+                        isLocked: !isProUser,
+                        action: {
+                            showingReports = true
+                            usageAnalytics.trackFeatureUsage("view_reports")
+                            
+                            if !isProUser {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    showingInterstitialAd = true
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
     
+    // MARK: - Due Payments Alert
     private var duePaymentsAlert: some View {
         VStack(spacing: 12) {
             HStack {
@@ -705,6 +1143,7 @@ struct HomeView: View {
         .padding(.horizontal)
     }
     
+    // MARK: - Accounts Section
     private var accountsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -715,11 +1154,7 @@ struct HomeView: View {
                 Spacer()
                 
                 Button(action: {
-                    if subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) {
-                        showingAddAccount = true
-                    } else {
-                        subscriptionManager.showPaywallIfNeeded(for: .addAccount(currentCount: accountStore.accounts.count))
-                    }
+                    handleAddAccount()
                 }) {
                     HStack {
                         Image(systemName: subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) ? "plus.circle.fill" : "lock.fill")
@@ -736,7 +1171,6 @@ struct HomeView: View {
             .padding(.horizontal)
             
             if accountStore.accounts.isEmpty {
-                // Empty state
                 VStack(spacing: 12) {
                     Image(systemName: "creditcard")
                         .font(.system(size: 50))
@@ -754,15 +1188,12 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
             } else {
-                // Account cards with ads between them ONLY for free users
                 VStack(alignment: .leading, spacing: 12) {
-                    // Debit accounts (Assets)
                     let debitAccounts = accountStore.accounts.filter { $0.accountType == .debit }
                     if !debitAccounts.isEmpty {
                         assetsSection(debitAccounts)
                     }
                     
-                    // FIXED: Native ad between account sections ONLY for free users
                     if !isProUser && !debitAccounts.isEmpty {
                         NativeAdCard(
                             subscriptionManager: subscriptionManager,
@@ -771,7 +1202,6 @@ struct HomeView: View {
                         .padding(.horizontal)
                     }
                     
-                    // Credit accounts (Liabilities)
                     let creditAccounts = accountStore.accounts.filter { $0.accountType == .credit }
                     if !creditAccounts.isEmpty {
                         creditCardsSection(creditAccounts)
@@ -875,7 +1305,7 @@ struct HomeView: View {
                     Text("Debt")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                      Text(currencyManager.formatAmount(accountStore.totalDebt()))
+                    Text(currencyManager.formatAmount(accountStore.totalDebt()))
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.red)
@@ -916,7 +1346,71 @@ struct HomeView: View {
         .padding(.horizontal)
     }
     
-    // MARK: - Account Management Methods
+    // MARK: - Helper Methods
+    private func setupApp() {
+        if authManager.authenticationMethod != .none && !authManager.isAuthenticated {
+            authManager.authenticateUser()
+        }
+        
+        RecurringPaymentScheduler.shared.configure(
+            recurringStore: recurringStore,
+            accountStore: accountStore
+        )
+        
+        _ = RecurringPaymentScheduler.shared.checkAndProcessDuePayments()
+        RecurringPaymentScheduler.shared.scheduleUpcomingPaymentNotifications()
+        
+        usageAnalytics.trackAppOpen()
+    }
+    
+    private func handleForegroundReturn() {
+        if authManager.authenticationMethod != .none {
+            authManager.lockApp()
+            authManager.authenticateUser()
+        }
+        
+        RecurringPaymentScheduler.shared.applicationWillEnterForeground()
+    }
+    
+    private func handleAddAccount() {
+        if subscriptionManager.canAddAccount(currentAccountCount: accountStore.accounts.count) {
+            showingAddAccount = true
+        } else {
+            subscriptionManager.showPaywallIfNeeded(for: .addAccount(currentCount: accountStore.accounts.count))
+        }
+        usageAnalytics.trackFeatureUsage("add_account")
+    }
+    
+    private func handleReceiptScanning() {
+        if subscriptionManager.canAccessReceiptScanning() {
+            showingScanReceipt = true
+        } else {
+            subscriptionManager.showPaywallIfNeeded(for: .receiptScanning)
+        }
+        usageAnalytics.trackFeatureUsage("scan_receipt")
+    }
+    
+    private func handleAIInsights() {
+        if subscriptionManager.canAccessAIInsights() {
+            showingAIInsights = true
+        } else {
+            subscriptionManager.showPaywallIfNeeded(for: .aiInsights)
+        }
+        usageAnalytics.trackFeatureUsage("ai_insights_tap")
+    }
+    
+    private func colorForAccount(_ colorName: String) -> Color {
+        switch colorName {
+        case "Blue": return .blue
+        case "Green": return .green
+        case "Purple": return .purple
+        case "Orange": return .orange
+        case "Red": return .red
+        case "Yellow": return .yellow
+        default: return .blue
+        }
+    }
+    
     private func editAccount(_ account: Account) {
         accountToEdit = account
         showingEditAccount = true
@@ -928,7 +1422,7 @@ struct HomeView: View {
     }
 }
 
-// MARK: - NEW: Quick Meme Generator with Real Data
+// MARK: - Quick Meme Generator with Real Data
 struct QuickMemeGeneratorView: View {
     let netWorth: Double
     let totalDebt: Double
@@ -973,7 +1467,6 @@ struct QuickMemeGeneratorView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Quick template selector
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(Array(quickTemplates.enumerated()), id: \.offset) { index, template in
@@ -988,7 +1481,6 @@ struct QuickMemeGeneratorView: View {
                     .padding(.horizontal)
                 }
                 
-                // Meme preview
                 VStack {
                     ZStack {
                         RoundedRectangle(cornerRadius: 16)
@@ -1028,7 +1520,6 @@ struct QuickMemeGeneratorView: View {
                 }
                 .padding(.horizontal)
                 
-                // Action buttons
                 HStack(spacing: 16) {
                     Button("Share to TikTok") {
                         shareMeme(platform: .tiktok)
@@ -1078,7 +1569,7 @@ struct QuickMemeGeneratorView: View {
     }
 }
 
-// MARK: - NEW: Share Win View
+// MARK: - Share Win View
 struct ShareWinView: View {
     let accountStore: AccountStore
     let viralManager: ViralContentManager
@@ -1116,7 +1607,6 @@ struct ShareWinView: View {
                     .fontWeight(.bold)
                     .padding()
                 
-                // Win type selector
                 VStack(spacing: 12) {
                     ForEach(WinType.allCases, id: \.self) { winType in
                         WinTypeCard(
@@ -1132,7 +1622,6 @@ struct ShareWinView: View {
                 
                 Spacer()
                 
-                // Share button
                 Button("Create & Share") {
                     createWinPost()
                 }
@@ -1285,8 +1774,7 @@ enum SocialPlatform {
     case tiktok, instagram, twitter
 }
 
-// MARK: - FIXED: Monetized Quick Action Button with Dark Mode Support (unchanged)
-
+// MARK: - Monetized Quick Action Button with Dark Mode Support
 struct MonetizedQuickActionButton: View {
     let title: String
     let icon: String
@@ -1341,7 +1829,6 @@ struct MonetizedQuickActionButton: View {
                             .foregroundColor(isLocked ? .gray : color)
                     }
                     
-                    // FIXED: Only show lock overlay if feature is locked
                     if isLocked {
                         Image(systemName: "lock.fill")
                             .font(.caption)
